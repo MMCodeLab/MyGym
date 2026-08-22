@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <title>MyGym — Il tuo diario di allenamento</title>
+  <meta name="description" content="Organizza i tuoi allenamenti in giorni ed esercizi, con immagini illustrative." />
+
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0b0e1a" id="theme-color-meta" />
+
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MyGym" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="bg-blobs" aria-hidden="true">
+    <span class="blob blob-a"></span>
+    <span class="blob blob-b"></span>
+    <span class="blob blob-c"></span>
+  </div>
+
+  <div id="app-shell">
+    <header class="topbar glass">
+      <div class="topbar-inner">
+        <span class="brand"><img src="icons/icon-192.png" alt="" class="brand-mark" width="28" height="28" /><strong>MyGym</strong></span>
+      </div>
+    </header>
+
+    <main id="view" class="view" role="main"></main>
+
+    <nav class="bottom-nav glass" id="bottom-nav" aria-label="Navigazione principale">
+      <span class="nav-pill" id="nav-pill" aria-hidden="true"></span>
+      <a href="#/" class="nav-item" data-route="giorni">
+        <span class="nav-icon" data-icon="giorni"></span>
+        <span class="nav-label">Giorni</span>
+      </a>
+      <a href="#/esercizi" class="nav-item" data-route="esercizi">
+        <span class="nav-icon" data-icon="esercizi"></span>
+        <span class="nav-label">Esercizi</span>
+      </a>
+      <a href="#/impostazioni" class="nav-item" data-route="impostazioni">
+        <span class="nav-icon" data-icon="impostazioni"></span>
+        <span class="nav-label">Impostazioni</span>
+      </a>
+    </nav>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-root" aria-live="polite"></div>
+
+  <!--
+    Script classici (non moduli ES) caricati in ordine di dipendenza.
+    Scelta deliberata: aprendo index.html con doppio click (file://), Chrome
+    blocca il caricamento dei moduli ES per policy CORS. Con script classici
+    l'app funziona sia via doppio click sia da un server locale.
+  -->
+  <script src="js/state.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/exercise-api.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/views/home.js"></script>
+  <script src="js/views/day.js"></script>
+  <script src="js/views/exercises.js"></script>
+  <script src="js/views/settings.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
