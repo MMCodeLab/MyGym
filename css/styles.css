@@ -94,6 +94,20 @@ img {
   user-select: none;
 }
 
+/* Scrollbar sottile e "glass" al posto di quella bianca di default del browser. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-tertiary) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: var(--text-tertiary);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
 html, body {
   height: 100%;
 }
@@ -233,30 +247,37 @@ a { color: inherit; text-decoration: none; }
   transform: translateX(-50%);
   width: calc(100% - 32px);
   max-width: 528px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
   border-radius: var(--radius-pill);
   padding: 6px;
   z-index: 30;
 }
+.bottom-nav::-webkit-scrollbar { display: none; }
 
 .nav-pill {
   position: absolute;
   top: 6px;
-  left: 6px;
-  width: calc(33.333% - 4px);
+  left: 0;
+  width: 25%;
   height: calc(100% - 12px);
   border-radius: var(--radius-pill);
   background: var(--accent-gradient);
   box-shadow: 0 4px 18px rgba(139, 92, 246, 0.45);
-  transform: translateX(calc(var(--active-index, 0) * 100%));
-  transition: transform .45s var(--ease-spring);
+  transition: transform .45s var(--ease-spring), width .45s var(--ease-spring);
+  will-change: transform;
   z-index: 0;
 }
 
 .nav-item {
   position: relative;
   z-index: 1;
+  flex: 1 1 0;
+  min-width: 74px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -293,6 +314,7 @@ a { color: inherit; text-decoration: none; }
   transition: transform .2s var(--ease-spring), box-shadow .3s var(--ease-out), opacity .2s;
 }
 .btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
 .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 
 .btn-primary {
@@ -648,6 +670,101 @@ a { color: inherit; text-decoration: none; }
 .settings-row-text { flex: 1; }
 .settings-row-title { font-weight: 600; font-size: 0.92rem; }
 .settings-row-desc { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+
+.settings-row-lg {
+  cursor: pointer;
+  padding: var(--space-5) var(--space-4);
+}
+.settings-row-lg .settings-row-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.settings-row-lg .settings-row-desc { font-size: 0.85rem; }
+.settings-row-lg-icon {
+  width: 46px; height: 46px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--accent-gradient);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.35);
+}
+.settings-row-lg-icon svg { width: 24px; height: 24px; }
+.settings-row-lg-chevron { width: 20px; height: 20px; color: var(--text-tertiary); flex-shrink: 0; transform: rotate(-90deg); }
+
+/* ---------- Weekday picker (inizia allenamento) ---------- */
+.weekday-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: var(--space-4) 0;
+}
+.chip-lg {
+  padding: 14px 22px;
+  font-size: 0.95rem;
+  border-radius: var(--radius-md);
+}
+
+/* ---------- Cronometro (Inizia allenamento) ---------- */
+.workout-topbar {
+  position: sticky;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px 12px 10px 14px;
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-3);
+}
+.stopwatch { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.stopwatch-icon { width: 18px; height: 18px; color: var(--accent-a); flex-shrink: 0; }
+.stopwatch-icon svg { width: 100%; height: 100%; }
+.stopwatch-time {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* ---------- Esercizio in allenamento (serie/reps/kg) ---------- */
+.workout-exercise-card { display: flex; flex-direction: column; }
+.workout-exercise-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  background: transparent;
+  padding: 6px 4px;
+  flex: 1;
+  min-width: 0;
+}
+.sets-list { display: flex; flex-direction: column; gap: 8px; }
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.set-row-readonly { justify-content: space-between; }
+.set-label { font-size: 0.8rem; color: var(--text-secondary); width: 54px; flex-shrink: 0; }
+.input-set { width: 100%; min-width: 0; padding: 8px 6px; text-align: center; }
+.set-x { color: var(--text-tertiary); font-size: 0.8rem; flex-shrink: 0; }
+.set-unit { color: var(--text-tertiary); font-size: 0.75rem; flex-shrink: 0; }
+.set-remove-btn { width: 34px; height: 34px; flex-shrink: 0; }
+.set-remove-btn svg { width: 15px; height: 15px; }
+.set-remove-spacer { width: 34px; flex-shrink: 0; }
+
+/* ---------- Grafico progressi (storico allenamenti) ---------- */
+.chart-card { padding: var(--space-4); }
+.line-chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.line-chart-value { font-size: 9px; font-weight: 700; fill: var(--text-secondary); font-family: var(--font-body); }
+.line-chart-label { font-size: 8px; fill: var(--text-tertiary); font-family: var(--font-body); }
+.line-chart-dot { fill: var(--bg); stroke: var(--accent-b); stroke-width: 2; }
+.line-chart-dot-current { fill: var(--accent-a); stroke: var(--accent-a); filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.7)); }
 
 /* ---------- Utility ---------- */
 .flex { display: flex; }

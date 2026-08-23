@@ -3,18 +3,28 @@
 // blocca il caricamento dei moduli ES quando la pagina e' aperta via file://.
 (function () {
 
-const ROUTE_ORDER = ['giorni', 'esercizi', 'impostazioni'];
-
 function container() {
   return document.getElementById('view');
+}
+
+// Posiziona la pillola della bottom nav misurando il vero elemento attivo
+// (in pixel, non in percentuale) cosi' funziona con un numero qualsiasi di
+// voci, anche quando la barra scorre orizzontalmente su schermi stretti.
+function positionNavPill(nav) {
+  const active = nav.querySelector('.nav-item.active');
+  const pill = document.getElementById('nav-pill');
+  if (!active || !pill) return;
+  pill.style.width = `${active.offsetWidth}px`;
+  pill.style.height = `${active.offsetHeight}px`;
+  pill.style.transform = `translateX(${active.offsetLeft}px)`;
+  active.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
 }
 
 function updateNavActive(routeKey) {
   const nav = document.getElementById('bottom-nav');
   const items = nav.querySelectorAll('.nav-item');
   items.forEach((item) => item.classList.toggle('active', item.dataset.route === routeKey));
-  const index = ROUTE_ORDER.indexOf(routeKey);
-  nav.style.setProperty('--active-index', String(Math.max(index, 0)));
+  positionNavPill(nav);
 }
 
 function route() {
@@ -34,6 +44,12 @@ function route() {
     routeKey = 'giorni';
     renderFn = views.day.render;
     arg = parts[1];
+  } else if (parts[0] === 'allenamento') {
+    routeKey = 'allenamento';
+    renderFn = views.workout.render;
+  } else if (parts[0] === 'storico') {
+    routeKey = 'impostazioni';
+    renderFn = views.workoutHistory.render;
   } else if (parts[0] === 'esercizi') {
     routeKey = 'esercizi';
     renderFn = views.exercises.render;
@@ -58,6 +74,7 @@ function navigate(hash) {
 
 function initRouter() {
   window.addEventListener('hashchange', route);
+  window.addEventListener('resize', () => positionNavPill(document.getElementById('bottom-nav')));
   route();
 }
 

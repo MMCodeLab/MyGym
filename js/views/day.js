@@ -6,23 +6,27 @@ const { store, muscleGroup, icon, escapeHtml, openModal, closeModal, showToast, 
 let currentDayId = null;
 let currentContainer = null;
 
+function badgesHtml(muscleGroups) {
+  return (muscleGroups || []).map((key) => {
+    const mg = muscleGroup(key);
+    return `<span class="badge" style="background:${mg.color}">${escapeHtml(mg.label)}</span>`;
+  }).join(' ');
+}
+
 function entryRowHtml(day, entry, index) {
   const ex = store.getExercise(entry.exerciseId);
   if (!ex) return '';
-  const mg = muscleGroup(ex.muscleGroup);
   const thumb = ex.imageUrl
     ? `<img src="${escapeHtml(ex.imageUrl)}" alt="" loading="lazy" draggable="false" />`
     : icon('dumbbell');
-  const isFirst = index === 0;
-  const isLast = index === day.entries.length - 1;
 
   return `
     <div class="card exercise-card glass" data-entry-exercise="${ex.id}">
       <div class="exercise-thumb">${thumb}</div>
       <div class="exercise-info">
         <div class="exercise-name">${escapeHtml(ex.name)}</div>
-        <div class="flex items-center gap-2 mt-2">
-          <span class="badge" style="background:${mg.color}">${escapeHtml(mg.label)}</span>
+        <div class="flex items-center gap-2 mt-2" style="flex-wrap:wrap">
+          ${badgesHtml(ex.muscleGroups)}
           <span class="flex items-center gap-2" style="font-size:0.78rem" onclick="event.stopPropagation()">
             <input type="number" class="input input-number" min="1" max="20" value="${entry.sets}" data-field="sets" data-exercise="${ex.id}" />
             <span class="text-secondary">×</span>
@@ -30,12 +34,8 @@ function entryRowHtml(day, entry, index) {
           </span>
         </div>
       </div>
-      <div class="exercise-row-actions flex-col gap-2">
-        <div class="flex gap-2">
-          <button class="icon-btn" data-move="-1" data-exercise="${ex.id}" ${isFirst ? 'disabled style="opacity:.3"' : ''} aria-label="Sposta su">${icon('chevronUp')}</button>
-          <button class="icon-btn" data-move="1" data-exercise="${ex.id}" ${isLast ? 'disabled style="opacity:.3"' : ''} aria-label="Sposta giù">${icon('chevronDown')}</button>
-          <button class="icon-btn danger" data-remove-entry="${ex.id}" aria-label="Rimuovi dal giorno">${icon('trash')}</button>
-        </div>
+      <div class="exercise-row-actions">
+        <button class="icon-btn danger" data-remove-entry="${ex.id}" aria-label="Rimuovi dal giorno">${icon('trash')}</button>
       </div>
     </div>
   `;
@@ -52,7 +52,6 @@ function openAddExerciseToDayModal(day) {
       return `<p class="text-secondary text-center mt-4">Nessun esercizio trovato.</p>`;
     }
     return items.map((ex) => {
-      const mg = muscleGroup(ex.muscleGroup);
       const added = availableIds.has(ex.id);
       const thumb = ex.imageUrl ? `<img src="${escapeHtml(ex.imageUrl)}" alt="" loading="lazy" draggable="false" />` : icon('dumbbell');
       return `
@@ -60,7 +59,7 @@ function openAddExerciseToDayModal(day) {
           <div class="exercise-thumb">${thumb}</div>
           <div class="exercise-info">
             <div class="exercise-name">${escapeHtml(ex.name)}</div>
-            <span class="badge" style="background:${mg.color}">${escapeHtml(mg.label)}</span>
+            <div class="flex gap-2" style="flex-wrap:wrap">${badgesHtml(ex.muscleGroups)}</div>
           </div>
           <div class="exercise-row-actions">
             ${added ? icon('check') : icon('plus')}
@@ -201,13 +200,6 @@ function render(container, dayId) {
       const field = input.dataset.field;
       const value = Math.max(1, parseInt(input.value, 10) || 1);
       store.updateDayEntry(day.id, exId, { [field]: value });
-    });
-  });
-
-  container.querySelectorAll('[data-move]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      store.moveDayEntry(day.id, btn.dataset.exercise, parseInt(btn.dataset.move, 10));
-      render(container, dayId);
     });
   });
 

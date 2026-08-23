@@ -1,7 +1,7 @@
 // Script classico (non un modulo ES): espone tutto su window.MyGym.views.settings.
 (function () {
 
-const { store, icon, showToast, confirmAction } = window.MyGym;
+const { store, icon, showToast, confirmAction, navigate } = window.MyGym;
 
 function download(filename, text) {
   const blob = new Blob([text], { type: 'application/json' });
@@ -22,6 +22,17 @@ function render(container) {
   container.innerHTML = `
     <h1 class="section-title">Impostazioni</h1>
     <p class="section-subtitle">Personalizza l'app.</p>
+
+    <div class="settings-section">
+      <div class="settings-row settings-row-lg glass" id="workouts-row">
+        <span class="settings-row-lg-icon">${icon('chartBar')}</span>
+        <div class="settings-row-text">
+          <div class="settings-row-title">Allenamenti</div>
+          <div class="settings-row-desc">Storico completo e grafico dei progressi.</div>
+        </div>
+        <span class="settings-row-lg-chevron">${icon('chevronDown')}</span>
+      </div>
+    </div>
 
     <div class="settings-section">
       <h3>Aspetto</h3>
@@ -79,6 +90,8 @@ function render(container) {
 
     <p class="text-center text-secondary" style="font-size:0.75rem;margin-top:8px">© ${new Date().getFullYear()} Matteo Minniti. Tutti i diritti riservati.</p>
   `;
+
+  container.querySelector('#workouts-row').addEventListener('click', () => navigate('#/storico'));
 
   const segmented = container.querySelector('#theme-segmented');
   segmented.querySelectorAll('[data-theme-opt]').forEach((opt) => {

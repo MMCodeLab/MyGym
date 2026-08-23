@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'mygym-v2';
+const CACHE_VERSION = 'mygym-v3';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -15,6 +15,8 @@ const SHELL_ASSETS = [
   'js/views/home.js',
   'js/views/day.js',
   'js/views/exercises.js',
+  'js/views/workout.js',
+  'js/views/workout-history.js',
   'js/views/settings.js',
   'icons/icon-192.png',
   'icons/icon-512.png',

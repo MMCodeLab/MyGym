@@ -30,7 +30,17 @@ function uid() {
 }
 
 function defaultState() {
-  return { theme: 'dark', exercises: [], days: [] };
+  return { theme: 'dark', exercises: [], days: [], workouts: [], activeWorkout: null };
+}
+
+const MAX_MUSCLE_GROUPS_PER_EXERCISE = 3;
+
+// Migra gli esercizi salvati prima dell'introduzione dei gruppi muscolari
+// multipli (campo singolare "muscleGroup") al nuovo campo array "muscleGroups".
+function migrateExercise(ex) {
+  if (ex.muscleGroups) return ex;
+  const { muscleGroup, ...rest } = ex;
+  return { ...rest, muscleGroups: muscleGroup ? [muscleGroup] : [] };
 }
 
 function load() {
@@ -38,7 +48,9 @@ function load() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
-    return { ...defaultState(), ...parsed };
+    const merged = { ...defaultState(), ...parsed };
+    merged.exercises = (merged.exercises || []).map(migrateExercise);
+    return merged;
   } catch (e) {
     console.warn('Impossibile leggere i dati salvati, riparto da zero.', e);
     return defaultState();
@@ -80,11 +92,11 @@ const store = {
   },
 
   // ---- Exercises (global library) ----
-  addExercise({ name, muscleGroupKey, imageUrl, description }) {
+  addExercise({ name, muscleGroups, imageUrl, description }) {
     const ex = {
       id: uid(),
       name: name.trim(),
-      muscleGroup: muscleGroupKey,
+      muscleGroups: (muscleGroups || []).slice(0, MAX_MUSCLE_GROUPS_PER_EXERCISE),
       imageUrl: imageUrl || null,
       description: description || null,
       createdAt: Date.now(),
@@ -96,6 +108,7 @@ const store = {
   updateExercise(id, patch) {
     const ex = state.exercises.find((e) => e.id === id);
     if (!ex) return;
+    if (patch.muscleGroups) patch = { ...patch, muscleGroups: patch.muscleGroups.slice(0, MAX_MUSCLE_GROUPS_PER_EXERCISE) };
     Object.assign(ex, patch);
     save();
   },
@@ -157,14 +170,114 @@ const store = {
     Object.assign(entry, patch);
     save();
   },
-  moveDayEntry(dayId, exerciseId, direction) {
+  // ---- Allenamento in corso (sopravvive a un refresh, finche' non termini) ----
+  getActiveWorkout() {
+    return state.activeWorkout;
+  },
+  startActiveWorkout(dayId) {
     const day = state.days.find((d) => d.id === dayId);
-    if (!day) return;
-    const idx = day.entries.findIndex((e) => e.exerciseId === exerciseId);
-    const target = idx + direction;
-    if (idx < 0 || target < 0 || target >= day.entries.length) return;
-    const [item] = day.entries.splice(idx, 1);
-    day.entries.splice(target, 0, item);
+    if (!day) return null;
+    const workout = {
+      dayId: day.id,
+      weekday: day.name,
+      startedAt: Date.now(),
+      elapsedMs: 0,
+      running: true,
+      exercises: [], // { id, exerciseId, name, muscles: [], sets: [{ reps, weight }] }
+    };
+    state.activeWorkout = workout;
+    save();
+    return workout;
+  },
+  updateActiveWorkout(patch) {
+    if (!state.activeWorkout) return;
+    Object.assign(state.activeWorkout, patch);
+    save();
+  },
+  addActiveWorkoutExercise({ exerciseId, name, muscles }) {
+    if (!state.activeWorkout) return null;
+    const entry = {
+      id: uid(),
+      exerciseId: exerciseId || null,
+      name: name.trim(),
+      muscles: muscles || [],
+      sets: [{ reps: null, weight: null }],
+    };
+    state.activeWorkout.exercises.push(entry);
+    save();
+    return entry;
+  },
+  updateActiveWorkoutExercise(entryId, patch) {
+    if (!state.activeWorkout) return;
+    const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
+    if (!entry) return;
+    Object.assign(entry, patch);
+    save();
+  },
+  removeActiveWorkoutExercise(entryId) {
+    if (!state.activeWorkout) return;
+    state.activeWorkout.exercises = state.activeWorkout.exercises.filter((e) => e.id !== entryId);
+    save();
+  },
+  addActiveWorkoutSet(entryId) {
+    if (!state.activeWorkout) return;
+    const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
+    if (!entry) return;
+    entry.sets.push({ reps: null, weight: null });
+    save();
+  },
+  removeActiveWorkoutSet(entryId, setIndex) {
+    if (!state.activeWorkout) return;
+    const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
+    if (!entry || entry.sets.length <= 1) return;
+    entry.sets.splice(setIndex, 1);
+    save();
+  },
+  updateActiveWorkoutSet(entryId, setIndex, patch) {
+    if (!state.activeWorkout) return;
+    const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
+    if (!entry || !entry.sets[setIndex]) return;
+    Object.assign(entry.sets[setIndex], patch);
+    save();
+  },
+  discardActiveWorkout() {
+    state.activeWorkout = null;
+    save();
+  },
+
+  // ---- Storico allenamenti ----
+  finishActiveWorkout() {
+    if (!state.activeWorkout) return null;
+    const w = state.activeWorkout;
+    const elapsedMs = w.elapsedMs + (w.running ? Date.now() - w.startedAt : 0);
+    const muscles = [...new Set(w.exercises.flatMap((e) => e.muscles))];
+    const record = {
+      id: uid(),
+      dayId: w.dayId || null,
+      weekday: w.weekday,
+      date: new Date().toISOString(),
+      durationSeconds: Math.round(elapsedMs / 1000),
+      exercises: w.exercises.map((e) => ({
+        exerciseId: e.exerciseId,
+        name: e.name,
+        muscles: e.muscles,
+        sets: e.sets.map((s) => ({ reps: s.reps || 0, weight: s.weight || 0 })),
+      })),
+      muscles,
+    };
+    state.workouts.push(record);
+    state.activeWorkout = null;
+    save();
+    return record;
+  },
+  getWorkouts() {
+    return [...state.workouts].sort((a, b) => new Date(b.date) - new Date(a.date));
+  },
+  getWorkout(id) {
+    return state.workouts.find((w) => w.id === id) || null;
+  },
+  deleteWorkout(id) {
+    state.workouts = state.workouts.filter((w) => w.id !== id);
     save();
   },
 
@@ -185,6 +298,6 @@ const store = {
 };
 
 window.MyGym = window.MyGym || {};
-Object.assign(window.MyGym, { store, MUSCLE_GROUPS, muscleGroup, uid, applyTheme });
+Object.assign(window.MyGym, { store, MUSCLE_GROUPS, muscleGroup, uid, applyTheme, MAX_MUSCLE_GROUPS_PER_EXERCISE });
 
 })();

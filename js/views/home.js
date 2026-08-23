@@ -10,7 +10,7 @@ function dayCardHtml(day) {
     day.entries
       .map((e) => store.getExercise(e.exerciseId))
       .filter(Boolean)
-      .map((ex) => ex.muscleGroup)
+      .flatMap((ex) => ex.muscleGroups || [])
   )];
 
   const chips = groups.slice(0, 4).map((key) => {

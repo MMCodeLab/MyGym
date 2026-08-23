@@ -1,13 +1,19 @@
 // Script classico (non un modulo ES): espone tutto su window.MyGym.views.exercises.
 (function () {
 
-const { store, MUSCLE_GROUPS, muscleGroup, icon, escapeHtml, openModal, closeModal, showToast, confirmAction, searchExerciseImages, translateInstructionsToItalian } = window.MyGym;
+const { store, MUSCLE_GROUPS, muscleGroup, MAX_MUSCLE_GROUPS_PER_EXERCISE, icon, escapeHtml, openModal, closeModal, showToast, confirmAction, searchExerciseImages, translateInstructionsToItalian } = window.MyGym;
 
 let activeFilter = 'tutti';
 let searchQuery = '';
 
+function badgesHtml(muscleGroups) {
+  return (muscleGroups || []).map((key) => {
+    const mg = muscleGroup(key);
+    return `<span class="badge" style="background:${mg.color}">${escapeHtml(mg.label)}</span>`;
+  }).join(' ');
+}
+
 function exerciseCardHtml(ex) {
-  const mg = muscleGroup(ex.muscleGroup);
   const thumb = ex.imageUrl
     ? `<img src="${escapeHtml(ex.imageUrl)}" alt="${escapeHtml(ex.name)}" loading="lazy" draggable="false" />`
     : icon('dumbbell');
@@ -16,7 +22,7 @@ function exerciseCardHtml(ex) {
       <div class="exercise-thumb">${thumb}</div>
       <div class="exercise-info">
         <div class="exercise-name">${escapeHtml(ex.name)}</div>
-        <span class="badge" style="background:${mg.color}">${escapeHtml(mg.label)}</span>
+        <div class="flex gap-2" style="flex-wrap:wrap;margin-top:4px">${badgesHtml(ex.muscleGroups)}</div>
       </div>
       <div class="exercise-row-actions">
         <button class="icon-btn danger" data-delete-exercise="${ex.id}" aria-label="Elimina esercizio">${icon('trash')}</button>
@@ -37,16 +43,32 @@ function muscleChipsHtml(selected, includeAll = true) {
   `).join('');
 }
 
+// ---------- Multi-select gruppi muscolari (max N per esercizio) ----------
+
+function muscleMultiChipsHtml(selected) {
+  const atLimit = selected.length >= MAX_MUSCLE_GROUPS_PER_EXERCISE;
+  return MUSCLE_GROUPS.map((mg) => {
+    const isSelected = selected.includes(mg.key);
+    const disabled = atLimit && !isSelected;
+    return `
+      <span class="chip ${isSelected ? 'selected' : ''}" data-mg="${mg.key}"
+        style="${isSelected ? `background:${mg.color};` : ''}${disabled ? 'opacity:.35;pointer-events:none;' : ''}">
+        ${escapeHtml(mg.label)}
+      </span>
+    `;
+  }).join('');
+}
+
 // ---------- Add / edit exercise modal ----------
 
 let selectedSuggestionImage = null;
-let selectedMuscleGroup = null;
+let selectedMuscleGroups = [];
 let selectedDescription = null;
 let searchDebounce = null;
 
 function openExerciseModal(existing) {
   selectedSuggestionImage = existing ? existing.imageUrl : null;
-  selectedMuscleGroup = existing ? existing.muscleGroup : null;
+  selectedMuscleGroups = existing ? [...(existing.muscleGroups || [])] : [];
   selectedDescription = existing ? existing.description : null;
 
   openModal({
@@ -69,9 +91,9 @@ function openExerciseModal(existing) {
       </div>
 
       <div class="field">
-        <label>Parte del corpo</label>
+        <label>Parte del corpo <span class="text-secondary" style="font-weight:400" id="mg-counter">(max ${MAX_MUSCLE_GROUPS_PER_EXERCISE})</span></label>
         <div class="chip-row" id="mg-picker" style="flex-wrap:wrap;overflow:visible">
-          ${muscleChipsHtml(selectedMuscleGroup, false)}
+          ${muscleMultiChipsHtml(selectedMuscleGroups)}
         </div>
       </div>
 
@@ -82,13 +104,23 @@ function openExerciseModal(existing) {
       const suggestionRow = body.querySelector('#suggestion-row');
       const status = body.querySelector('#suggestion-status');
       const mgPicker = body.querySelector('#mg-picker');
+      const mgCounter = body.querySelector('#mg-counter');
       nameInput.focus();
 
       function paintMgPicker() {
-        mgPicker.innerHTML = muscleChipsHtml(selectedMuscleGroup, false);
+        mgPicker.innerHTML = muscleMultiChipsHtml(selectedMuscleGroups);
+        mgCounter.textContent = `(${selectedMuscleGroups.length}/${MAX_MUSCLE_GROUPS_PER_EXERCISE})`;
         mgPicker.querySelectorAll('[data-mg]').forEach((chip) => {
           chip.addEventListener('click', () => {
-            selectedMuscleGroup = chip.dataset.mg;
+            const key = chip.dataset.mg;
+            if (selectedMuscleGroups.includes(key)) {
+              selectedMuscleGroups = selectedMuscleGroups.filter((k) => k !== key);
+            } else if (selectedMuscleGroups.length < MAX_MUSCLE_GROUPS_PER_EXERCISE) {
+              selectedMuscleGroups = [...selectedMuscleGroups, key];
+            } else {
+              showToast(`Massimo ${MAX_MUSCLE_GROUPS_PER_EXERCISE} gruppi muscolari per esercizio`);
+              return;
+            }
             paintMgPicker();
           });
         });
@@ -109,8 +141,9 @@ function openExerciseModal(existing) {
           card.addEventListener('click', async () => {
             const s = lastSuggestions[Number(card.dataset.idx)];
             selectedSuggestionImage = s.imageUrl || null;
-            if (!selectedMuscleGroup && s.muscleHint) {
-              selectedMuscleGroup = s.muscleHint;
+            nameInput.value = s.name;
+            if (!selectedMuscleGroups.length && s.muscleHint) {
+              selectedMuscleGroups = [s.muscleHint];
               paintMgPicker();
             }
             suggestionRow.querySelectorAll('.suggestion-card').forEach((c) => c.classList.remove('selected'));
@@ -161,21 +194,21 @@ function openExerciseModal(existing) {
       body.querySelector('#save-exercise-btn').addEventListener('click', () => {
         const name = nameInput.value.trim();
         if (!name) { nameInput.focus(); return; }
-        if (!selectedMuscleGroup) {
-          status.textContent = 'Seleziona una parte del corpo prima di salvare.';
+        if (!selectedMuscleGroups.length) {
+          status.textContent = 'Seleziona almeno una parte del corpo prima di salvare.';
           mgPicker.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
         if (existing) {
           store.updateExercise(existing.id, {
             name,
-            muscleGroup: selectedMuscleGroup,
+            muscleGroups: selectedMuscleGroups,
             imageUrl: selectedSuggestionImage !== null ? selectedSuggestionImage : existing.imageUrl,
             description: selectedDescription !== null ? selectedDescription : existing.description,
           });
           showToast('Esercizio aggiornato');
         } else {
-          store.addExercise({ name, muscleGroupKey: selectedMuscleGroup, imageUrl: selectedSuggestionImage, description: selectedDescription });
+          store.addExercise({ name, muscleGroups: selectedMuscleGroups, imageUrl: selectedSuggestionImage, description: selectedDescription });
           showToast('Esercizio aggiunto');
         }
         closeModal();
@@ -193,7 +226,6 @@ function renderCurrent() {
 // ---------- Detail card ----------
 
 function openExerciseDetailModal(ex) {
-  const mg = muscleGroup(ex.muscleGroup);
   openModal({
     title: ex.name,
     bodyHtml: `
@@ -201,7 +233,7 @@ function openExerciseDetailModal(ex) {
         ${ex.imageUrl
           ? `<img src="${escapeHtml(ex.imageUrl)}" alt="${escapeHtml(ex.name)}" draggable="false" style="width:100%;max-height:280px;object-fit:cover;border-radius:var(--radius-lg);margin-bottom:12px" />`
           : `<div class="exercise-thumb" style="width:100%;height:180px;margin-bottom:12px">${icon('dumbbell')}</div>`}
-        <span class="badge" style="background:${mg.color}">${escapeHtml(mg.label)}</span>
+        <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap">${badgesHtml(ex.muscleGroups)}</div>
       </div>
       <p class="text-secondary mt-4" style="line-height:1.5">${ex.description ? escapeHtml(ex.description) : 'Nessuna descrizione disponibile.'}</p>
       <div class="flex gap-3 mt-4">
@@ -234,7 +266,7 @@ function render(container) {
   const { exercises } = store.get();
 
   const filtered = exercises.filter((ex) => {
-    const matchesFilter = activeFilter === 'tutti' || ex.muscleGroup === activeFilter;
+    const matchesFilter = activeFilter === 'tutti' || (ex.muscleGroups || []).includes(activeFilter);
     const matchesSearch = !searchQuery || ex.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
