@@ -124,26 +124,24 @@ function renderForm(container) {
     </div>
 
     <div class="field">
-      <div class="flex items-center justify-between">
-        <label for="pt-weight" style="margin:0">Peso</label>
+      <label for="pt-weight">Peso</label>
+      <div class="flex items-center gap-2 mt-2" style="flex-wrap:wrap">
+        <input type="text" inputmode="decimal" class="input" id="pt-weight" placeholder="${formState.weightUnit}" value="${escapeHtml(formState.weight)}" style="max-width:96px" />
         ${chipRow('pt-weight-unit', WEIGHT_UNITS, formState.weightUnit)}
       </div>
-      <input type="text" inputmode="decimal" class="input mt-2" id="pt-weight" placeholder="${formState.weightUnit}" value="${escapeHtml(formState.weight)}" />
     </div>
 
     <div class="field">
-      <div class="flex items-center justify-between">
-        <label style="margin:0">Altezza</label>
+      <label>Altezza</label>
+      <div class="flex items-center gap-2 mt-2" style="flex-wrap:wrap">
+        ${formState.heightUnit === 'ft' ? `
+          <input type="text" inputmode="numeric" class="input" id="pt-height-ft" placeholder="piedi" value="${escapeHtml(formState.heightFeet)}" style="max-width:76px" />
+          <input type="text" inputmode="numeric" class="input" id="pt-height-in" placeholder="pollici" value="${escapeHtml(formState.heightInches)}" style="max-width:76px" />
+        ` : `
+          <input type="text" inputmode="numeric" class="input" id="pt-height" placeholder="cm" value="${escapeHtml(formState.height)}" style="max-width:96px" />
+        `}
         ${chipRow('pt-height-unit', HEIGHT_UNITS, formState.heightUnit)}
       </div>
-      ${formState.heightUnit === 'ft' ? `
-        <div class="flex gap-2 mt-2">
-          <input type="text" inputmode="numeric" class="input" id="pt-height-ft" placeholder="piedi" value="${escapeHtml(formState.heightFeet)}" style="flex:1" />
-          <input type="text" inputmode="numeric" class="input" id="pt-height-in" placeholder="pollici" value="${escapeHtml(formState.heightInches)}" style="flex:1" />
-        </div>
-      ` : `
-        <input type="text" inputmode="numeric" class="input mt-2" id="pt-height" placeholder="cm" value="${escapeHtml(formState.height)}" />
-      `}
     </div>
 
     <div class="field">

@@ -9,43 +9,36 @@ function formatDuration(totalSeconds) {
   return h > 0 ? `${h}h ${m}min` : `${m} min`;
 }
 
-function startOfWeek(d) {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  date.setDate(date.getDate() + diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
+function computeWorkoutVolume(w) {
+  return w.exercises.reduce((sum, e) => (
+    sum + e.sets.reduce((s, set) => s + (set.reps || 0) * (set.weight || 0), 0)
+  ), 0);
 }
 
-function buildWeeklyBuckets(workouts, weeks) {
-  const thisWeekStart = startOfWeek(new Date());
-  const buckets = [];
-  for (let i = weeks - 1; i >= 0; i--) {
-    const start = new Date(thisWeekStart);
-    start.setDate(start.getDate() - i * 7);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 7);
-    const count = workouts.filter((w) => {
-      const d = new Date(w.date);
-      return d >= start && d < end;
-    }).length;
-    buckets.push({ start, count });
+// ---------- Grafico: andamento del carico sollevato, per allenamento ----------
+// Stesso stile "a linea morbida" di prima, ma un punto per allenamento
+// (in ordine cronologico) invece che un punto per settimana.
+
+function volumeChartHtml(workouts) {
+  const chronological = [...workouts].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const recent = chronological.slice(-10);
+  const n = recent.length;
+
+  if (n < 2) {
+    return `<p class="text-secondary text-center" style="padding:16px 4px 4px">Registra almeno 2 allenamenti con dei pesi per vedere l'andamento del carico.</p>`;
   }
-  return buckets;
-}
 
-function chartHtml(buckets) {
-  const max = Math.max(1, ...buckets.map((b) => b.count));
+  const values = recent.map((w) => Math.round(computeWorkoutVolume(w)));
+  const max = Math.max(1, ...values);
   const W = 320, H = 120, PAD_X = 14, PAD_TOP = 20;
   const plotH = H - PAD_TOP;
-  const n = buckets.length;
   const stepX = (W - PAD_X * 2) / (n - 1);
 
-  const points = buckets.map((b, i) => ({
+  const points = recent.map((w, i) => ({
     x: PAD_X + i * stepX,
-    y: PAD_TOP + plotH - (b.count / max) * plotH,
-    count: b.count,
+    y: PAD_TOP + plotH - (values[i] / max) * plotH,
+    value: values[i],
+    date: new Date(w.date),
   }));
 
   // Curva morbida: una Bezier cubica tra ogni coppia di punti.
@@ -58,17 +51,20 @@ function chartHtml(buckets) {
   }
   const areaPath = `${linePath} L ${points[n - 1].x} ${H} L ${points[0].x} ${H} Z`;
 
+  // Solo l'ultimo punto (l'allenamento piu' recente) mostra il valore in
+  // etichetta, per non affollare il grafico con tanti punti vicini.
   const dots = points.map((p, i) => `
     <circle cx="${p.x}" cy="${p.y}" r="${i === n - 1 ? 5 : 3}" class="line-chart-dot${i === n - 1 ? ' line-chart-dot-current' : ''}" />
-    ${p.count ? `<text x="${p.x}" y="${p.y - 9}" class="line-chart-value" text-anchor="middle">${p.count}</text>` : ''}
+    ${i === n - 1 ? `<text x="${p.x}" y="${p.y - 9}" class="line-chart-value" text-anchor="middle">${p.value} kg</text>` : ''}
   `).join('');
 
-  const labels = points.map((p, i) => `
-    <text x="${p.x}" y="${H + 15}" class="line-chart-label" text-anchor="middle">${buckets[i].start.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</text>
-  `).join('');
+  const labelEvery = Math.max(1, Math.ceil(n / 4));
+  const labels = points.map((p, i) => (i % labelEvery === 0 || i === n - 1) ? `
+    <text x="${p.x}" y="${H + 15}" class="line-chart-label" text-anchor="middle">${p.date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</text>
+  ` : '').join('');
 
   return `
-    <svg viewBox="0 0 ${W} ${H + 20}" class="line-chart-svg" role="img" aria-label="Andamento allenamenti per settimana">
+    <svg viewBox="0 0 ${W} ${H + 20}" class="line-chart-svg" role="img" aria-label="Andamento del carico sollevato per allenamento">
       <defs>
         <linearGradient id="lineChartFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="var(--accent-a)" stop-opacity="0.35" />
@@ -84,6 +80,61 @@ function chartHtml(buckets) {
       ${dots}
       ${labels}
     </svg>
+  `;
+}
+
+// ---------- Streak mensile: quadratini colorati nei giorni allenati ----------
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function dateKey(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+
+const WEEKDAY_LABELS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+
+function currentStreak(workoutDateKeys) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  if (!workoutDateKeys.has(dateKey(d))) d.setDate(d.getDate() - 1); // oggi non ancora allenato: non azzerare, controlla da ieri
+  let count = 0;
+  while (workoutDateKeys.has(dateKey(d))) {
+    count++;
+    d.setDate(d.getDate() - 1);
+  }
+  return count;
+}
+
+function streakGridHtml(workouts) {
+  const allKeys = new Set(workouts.map((w) => dateKey(new Date(w.date))));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // 0 = Lunedi
+
+  const cells = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push('<span class="streak-cell streak-cell-pad"></span>');
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cellDate = new Date(year, month, day);
+    const key = dateKey(cellDate);
+    const filled = allKeys.has(key);
+    const isFuture = cellDate > today;
+    const cls = filled ? 'streak-cell-filled' : (isFuture ? 'streak-cell-future' : 'streak-cell-empty');
+    const title = cellDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+    cells.push(`<span class="streak-cell ${cls}" title="${escapeHtml(title)}${filled ? ' — allenato' : ''}">${day}</span>`);
+  }
+
+  const monthLabel = today.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+  const streak = currentStreak(allKeys);
+  const monthPrefix = `${year}-${pad2(month + 1)}`;
+  const workoutsThisMonth = [...allKeys].filter((k) => k.startsWith(monthPrefix)).length;
+
+  return `
+    <div class="flex items-center justify-between" style="margin-bottom:10px">
+      <span style="font-weight:700;font-size:0.9rem;text-transform:capitalize">${escapeHtml(monthLabel)}</span>
+      <span class="text-secondary" style="font-size:0.78rem">${workoutsThisMonth} allenamenti${streak > 0 ? ` · 🔥 ${streak} di fila` : ''}</span>
+    </div>
+    <div class="streak-weekdays">${WEEKDAY_LABELS.map((l) => `<span>${l}</span>`).join('')}</div>
+    <div class="streak-grid">${cells.join('')}</div>
   `;
 }
 
@@ -150,8 +201,6 @@ function render(container) {
     return;
   }
 
-  const buckets = buildWeeklyBuckets(workouts, 8);
-
   container.innerHTML = `
     <div class="flex items-center gap-3">
       <button class="icon-btn" id="back-btn" aria-label="Indietro">${icon('back')}</button>
@@ -162,9 +211,13 @@ function render(container) {
     <div class="card glass chart-card">
       <div class="flex items-center gap-2" style="margin-bottom:6px">
         ${icon('chartBar')}
-        <span style="font-weight:700;font-size:0.9rem">Allenamenti per settimana</span>
+        <span style="font-weight:700;font-size:0.9rem">Carico per allenamento</span>
       </div>
-      ${chartHtml(buckets)}
+      ${volumeChartHtml(workouts)}
+    </div>
+
+    <div class="card glass chart-card mt-3">
+      ${streakGridHtml(workouts)}
     </div>
 
     <div id="history-list" class="mt-4">

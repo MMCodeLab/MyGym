@@ -773,6 +773,46 @@ a { color: inherit; text-decoration: none; }
 .line-chart-dot { fill: var(--bg); stroke: var(--accent-b); stroke-width: 2; }
 .line-chart-dot-current { fill: var(--accent-a); stroke: var(--accent-a); filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.7)); }
 
+/* ---------- Streak mensile (storico allenamenti) ---------- */
+.streak-weekdays, .streak-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.streak-weekdays { margin-bottom: 4px; }
+.streak-weekdays span {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+}
+.streak-cell {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  transition: transform .2s var(--ease-spring);
+}
+.streak-cell-pad { visibility: hidden; }
+.streak-cell-empty {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-tertiary);
+}
+.streak-cell-future {
+  border: 1px dashed var(--glass-border);
+  color: var(--text-tertiary);
+  opacity: .4;
+}
+.streak-cell-filled {
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
+
 /* ---------- Utility ---------- */
 .flex { display: flex; }
 .flex-col { display: flex; flex-direction: column; }
