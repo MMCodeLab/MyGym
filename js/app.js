@@ -16,13 +16,29 @@ function setAppHeight() {
   const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
   document.documentElement.style.setProperty('--app-vh', `${h}px`);
 }
-setAppHeight();
-requestAnimationFrame(() => requestAnimationFrame(setAppHeight));
-setTimeout(setAppHeight, 300);
+// Su alcuni WebKit (iOS, soprattutto da PWA installata) leggere l'altezza
+// giusta non basta: il motore di rendering ricalcola davvero il layout solo
+// quando arriva un vero evento di scroll. Lo simuliamo noi (spostamento di 1px
+// e subito indietro, impercettibile) cosi' l'utente non deve farlo a mano.
+function nudgeViewport() {
+  window.scrollTo(0, 1);
+  // setTimeout invece di requestAnimationFrame: rAF puo' non scattare mai se
+  // la scheda non e' visibile/in primo piano nel momento in cui l'app si
+  // apre (es. tornando da un'altra app), lasciando lo scroll bloccato a 1px.
+  setTimeout(() => window.scrollTo(0, 0), 16);
+}
+function refreshViewport() {
+  setAppHeight();
+  nudgeViewport();
+}
+refreshViewport();
+requestAnimationFrame(() => requestAnimationFrame(refreshViewport));
+setTimeout(refreshViewport, 50);
+setTimeout(refreshViewport, 300);
 window.addEventListener('resize', setAppHeight);
-window.addEventListener('orientationchange', () => setTimeout(setAppHeight, 200));
+window.addEventListener('orientationchange', () => setTimeout(refreshViewport, 200));
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) setTimeout(setAppHeight, 100);
+  if (!document.hidden) setTimeout(refreshViewport, 100);
 });
 if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
 
