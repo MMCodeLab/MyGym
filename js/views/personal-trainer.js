@@ -8,11 +8,13 @@ const { store, MUSCLE_GROUPS, muscleGroup, MAX_MUSCLE_GROUPS_PER_EXERCISE, icon,
 
 const WORKER_URL = 'https://mygym-pt.minnitijunior.workers.dev/';
 
-const GENDERS = ['Uomo', 'Donna', 'Altro'];
-const GOALS = ['Dimagrimento', 'Ipertrofia', 'Forza', 'Resistenza', 'Tonificazione'];
+const GENDERS = ['Uomo', 'Donna'];
+const GOALS = ['Dimagrimento', 'Massa muscolare', 'Forza', 'Resistenza', 'Tonificazione', 'Definizione', 'Mobilità e flessibilità', 'Benessere generale'];
 const LEVELS = ['Principiante', 'Intermedio', 'Avanzato'];
 const DAYS_OPTIONS = [2, 3, 4, 5, 6];
-const EQUIPMENT = ['Palestra completa', 'Manubri a casa', 'Corpo libero'];
+const EQUIPMENT = ['Palestra completa', 'Manubri a casa', 'Kettlebell', 'Fasce elastiche', 'Calisthenics', 'Corpo libero'];
+const WEIGHT_UNITS = ['kg', 'lbs'];
+const HEIGHT_UNITS = ['cm', 'ft'];
 
 let currentContainer = null;
 let screen = 'form'; // 'form' | 'loading' | 'result' | 'error'
@@ -23,14 +25,38 @@ let formState = {
   name: '',
   age: '',
   weight: '',
+  weightUnit: 'kg',
   height: '',
+  heightFeet: '',
+  heightInches: '',
+  heightUnit: 'cm',
   gender: 'Uomo',
-  goal: 'Ipertrofia',
+  goal: 'Massa muscolare',
   level: 'Intermedio',
   daysPerWeek: 3,
   equipment: 'Palestra completa',
   notes: '',
 };
+
+// Il Worker/l'IA ragionano sempre in kg e cm: qui convertiamo solo al momento
+// dell'invio, cosi' l'utente puo' continuare a digitare nell'unita' scelta.
+function normalizedWeightKg() {
+  const w = parseFloat((formState.weight || '').replace(',', '.'));
+  if (!w || Number.isNaN(w)) return '';
+  const kg = formState.weightUnit === 'lbs' ? w * 0.453592 : w;
+  return Math.round(kg * 10) / 10;
+}
+
+function normalizedHeightCm() {
+  if (formState.heightUnit === 'ft') {
+    const ft = parseFloat(formState.heightFeet) || 0;
+    const inch = parseFloat(formState.heightInches) || 0;
+    if (!ft && !inch) return '';
+    return Math.round((ft * 12 + inch) * 2.54);
+  }
+  const h = parseFloat((formState.height || '').replace(',', '.'));
+  return h && !Number.isNaN(h) ? Math.round(h) : '';
+}
 
 function renderCurrent() {
   if (currentContainer) render(currentContainer);
@@ -65,6 +91,18 @@ function bindChipRow(body, idPrefix, onSelect) {
   });
 }
 
+// Come bindChipRow, ma per i toggle di unita' (kg/lbs, cm/ft): cambiare
+// unita' cambia anche quali campi numerici sono visibili, quindi qui serve
+// un re-render completo del form invece del solo restyle del chip.
+function bindUnitToggle(body, idPrefix, onSelect) {
+  body.querySelector(`#${idPrefix}-row`).querySelectorAll('[data-value]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      onSelect(chip.dataset.value);
+      renderCurrent();
+    });
+  });
+}
+
 // ---------- Schermata 1: form dati ----------
 
 function renderForm(container) {
@@ -80,19 +118,32 @@ function renderForm(container) {
       <input type="text" class="input" id="pt-name" placeholder="Il tuo nome" maxlength="40" value="${escapeHtml(formState.name)}" />
     </div>
 
-    <div class="flex gap-3">
-      <div class="field" style="flex:1">
-        <label for="pt-age">Età</label>
-        <input type="text" inputmode="numeric" class="input" id="pt-age" placeholder="anni" value="${escapeHtml(formState.age)}" />
+    <div class="field">
+      <label for="pt-age">Età</label>
+      <input type="text" inputmode="numeric" class="input" id="pt-age" placeholder="anni" value="${escapeHtml(formState.age)}" style="max-width:120px" />
+    </div>
+
+    <div class="field">
+      <div class="flex items-center justify-between">
+        <label for="pt-weight" style="margin:0">Peso</label>
+        ${chipRow('pt-weight-unit', WEIGHT_UNITS, formState.weightUnit)}
       </div>
-      <div class="field" style="flex:1">
-        <label for="pt-weight">Peso</label>
-        <input type="text" inputmode="decimal" class="input" id="pt-weight" placeholder="kg" value="${escapeHtml(formState.weight)}" />
+      <input type="text" inputmode="decimal" class="input mt-2" id="pt-weight" placeholder="${formState.weightUnit}" value="${escapeHtml(formState.weight)}" />
+    </div>
+
+    <div class="field">
+      <div class="flex items-center justify-between">
+        <label style="margin:0">Altezza</label>
+        ${chipRow('pt-height-unit', HEIGHT_UNITS, formState.heightUnit)}
       </div>
-      <div class="field" style="flex:1">
-        <label for="pt-height">Altezza</label>
-        <input type="text" inputmode="numeric" class="input" id="pt-height" placeholder="cm" value="${escapeHtml(formState.height)}" />
-      </div>
+      ${formState.heightUnit === 'ft' ? `
+        <div class="flex gap-2 mt-2">
+          <input type="text" inputmode="numeric" class="input" id="pt-height-ft" placeholder="piedi" value="${escapeHtml(formState.heightFeet)}" style="flex:1" />
+          <input type="text" inputmode="numeric" class="input" id="pt-height-in" placeholder="pollici" value="${escapeHtml(formState.heightInches)}" style="flex:1" />
+        </div>
+      ` : `
+        <input type="text" inputmode="numeric" class="input mt-2" id="pt-height" placeholder="cm" value="${escapeHtml(formState.height)}" />
+      `}
     </div>
 
     <div class="field">
@@ -132,14 +183,22 @@ function renderForm(container) {
   container.querySelector('#pt-name').addEventListener('change', (e) => { formState.name = e.target.value; });
   container.querySelector('#pt-age').addEventListener('change', (e) => { formState.age = e.target.value; });
   container.querySelector('#pt-weight').addEventListener('change', (e) => { formState.weight = e.target.value; });
-  container.querySelector('#pt-height').addEventListener('change', (e) => { formState.height = e.target.value; });
   container.querySelector('#pt-notes').addEventListener('change', (e) => { formState.notes = e.target.value; });
+
+  const heightCmInput = container.querySelector('#pt-height');
+  if (heightCmInput) heightCmInput.addEventListener('change', (e) => { formState.height = e.target.value; });
+  const heightFtInput = container.querySelector('#pt-height-ft');
+  if (heightFtInput) heightFtInput.addEventListener('change', (e) => { formState.heightFeet = e.target.value; });
+  const heightInInput = container.querySelector('#pt-height-in');
+  if (heightInInput) heightInInput.addEventListener('change', (e) => { formState.heightInches = e.target.value; });
 
   bindChipRow(container, 'pt-gender', (v) => { formState.gender = v; });
   bindChipRow(container, 'pt-goal', (v) => { formState.goal = v; });
   bindChipRow(container, 'pt-level', (v) => { formState.level = v; });
   bindChipRow(container, 'pt-days', (v) => { formState.daysPerWeek = Number(v); });
   bindChipRow(container, 'pt-equipment', (v) => { formState.equipment = v; });
+  bindUnitToggle(container, 'pt-weight-unit', (v) => { formState.weightUnit = v; });
+  bindUnitToggle(container, 'pt-height-unit', (v) => { formState.heightUnit = v; });
 
   container.querySelector('#pt-generate-btn').addEventListener('click', submitForm);
 }
@@ -170,10 +229,17 @@ async function submitForm() {
   renderCurrent();
 
   try {
+    // Il Worker/l'IA ricevono sempre kg e cm, a prescindere dall'unita' scelta
+    // dall'utente (conversione fatta qui, vedi normalizedWeightKg/Cm sopra).
+    const payload = {
+      ...formState,
+      weight: normalizedWeightKg(),
+      height: normalizedHeightCm(),
+    };
     const res = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formState),
+      body: JSON.stringify(payload),
     });
 
     let data;
