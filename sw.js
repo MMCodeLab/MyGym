@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'mygym-v4';
+const CACHE_VERSION = 'mygym-v5';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -54,13 +54,16 @@ self.addEventListener('fetch', (event) => {
   const isSameOrigin = url.origin === self.location.origin;
 
   if (isSameOrigin) {
-    // App shell: cache-first, fall back to network.
+    // App shell: rete prima, cosi' chi e' online vede sempre l'ultima
+    // versione pubblicata senza dover aspettare che il service worker si
+    // aggiorni da solo (puo' metterci minuti/ore). Cache come fallback solo
+    // per quando manca la connessione.
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request).then((res) => {
+      fetch(request).then((res) => {
         const clone = res.clone();
         caches.open(SHELL_CACHE).then((cache) => cache.put(request, clone));
         return res;
-      }).catch(() => cached))
+      }).catch(() => caches.match(request))
     );
   } else {
     // Cross-origin (exercise dataset / images): stale-while-revalidate.
