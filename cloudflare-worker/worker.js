@@ -132,7 +132,20 @@ export default {
 
       if (!groqRes.ok) {
         const detail = await groqRes.text();
-        return json({ error: 'Groq ha risposto con un errore.', detail }, 502, origin);
+        // DEBUG TEMPORANEO — nessun dato sensibile: solo forma/lunghezza
+        // della chiave usata, per capire perche' Groq la rifiuta. Da
+        // rimuovere non appena risolto.
+        const keyDebug = {
+          bindingType: typeof env.GROQ_API_KEY,
+          hasGetMethod: !!(env.GROQ_API_KEY && typeof env.GROQ_API_KEY.get === 'function'),
+          resolvedType: typeof groqApiKey,
+          length: groqApiKey ? groqApiKey.length : 0,
+          prefix: groqApiKey ? groqApiKey.slice(0, 6) : null,
+          suffix: groqApiKey ? groqApiKey.slice(-4) : null,
+          hasWhitespace: groqApiKey ? /\s/.test(groqApiKey) : null,
+          trimmedLength: groqApiKey ? groqApiKey.trim().length : 0,
+        };
+        return json({ error: 'Groq ha risposto con un errore.', detail, keyDebug }, 502, origin);
       }
 
       const data = await groqRes.json();
