@@ -93,7 +93,15 @@ export default {
     if (request.method !== 'POST') {
       return json({ error: 'Metodo non consentito, usa POST.' }, 405, origin);
     }
-    if (!env.GROQ_API_KEY) {
+    // I binding "Secrets Store" di Cloudflare non sono una stringa diretta:
+    // espongono un metodo .get() che restituisce il valore vero (async). I
+    // vecchi Worker Secret "classici" invece SONO gia' una stringa. Gestiamo
+    // entrambi i casi, cosi' funziona a prescindere dal tipo di binding.
+    const groqApiKey = env.GROQ_API_KEY && typeof env.GROQ_API_KEY.get === 'function'
+      ? await env.GROQ_API_KEY.get()
+      : env.GROQ_API_KEY;
+
+    if (!groqApiKey) {
       return json({ error: 'GROQ_API_KEY non configurata sul Worker.' }, 500, origin);
     }
 
@@ -108,7 +116,7 @@ export default {
       const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${env.GROQ_API_KEY}`,
+          Authorization: `Bearer ${groqApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
