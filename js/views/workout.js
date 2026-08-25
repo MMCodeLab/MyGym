@@ -175,7 +175,7 @@ function openAddExerciseModal() {
   openModal({
     title: 'Aggiungi esercizio',
     bodyHtml: `
-      <input type="text" class="input" id="pick-search" placeholder="Cerca in tutta la libreria..." style="margin-bottom:12px" />
+      <input type="text" class="input" id="pick-search" inputmode="search" enterkeyhint="search" placeholder="Cerca in tutta la libreria..." style="margin-bottom:12px" />
       <div id="pick-list">${renderList('')}</div>
     `,
     onMount: (body) => {

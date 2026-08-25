@@ -72,7 +72,7 @@ function openAddExerciseToDayModal(day) {
   openModal({
     title: 'Aggiungi esercizio',
     bodyHtml: `
-      <input type="text" class="input" id="pick-search" placeholder="Cerca nella tua libreria..." style="margin-bottom:12px" />
+      <input type="text" class="input" id="pick-search" inputmode="search" enterkeyhint="search" placeholder="Cerca nella tua libreria..." style="margin-bottom:12px" />
       <div id="pick-list">${renderList('')}</div>
       <button class="btn btn-glass btn-block mt-4" id="create-new-exercise-btn">${icon('plus')} Crea nuovo esercizio</button>
     `,

@@ -287,7 +287,7 @@ function render(container) {
   container.innerHTML = `
     <h1 class="section-title">Esercizi</h1>
     <p class="section-subtitle">La tua libreria personale di esercizi.</p>
-    <input type="text" class="input mt-2" id="search-exercises" placeholder="Cerca un esercizio..." value="${escapeHtml(searchQuery)}" style="margin-bottom:12px" />
+    <input type="text" class="input mt-2" id="search-exercises" inputmode="search" enterkeyhint="search" placeholder="Cerca un esercizio..." value="${escapeHtml(searchQuery)}" style="margin-bottom:12px" />
     <div class="chip-row" id="mg-filter">${muscleChipsHtml(activeFilter)}</div>
     <div id="exercises-list">${list}</div>
     <button class="fab" id="fab-add-exercise" aria-label="Nuovo esercizio">${icon('plus')}</button>

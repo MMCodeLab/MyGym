@@ -196,6 +196,12 @@ a { color: inherit; text-decoration: none; }
   margin: 0 auto;
   min-height: 100vh;
   min-height: 100dvh;
+  /* --app-vh e' misurata via JS (app.js) e ricalcolata quando la UI del
+     browser/PWA cambia altezza: senza, iOS e alcuni Android a volte tengono
+     un valore di viewport "vecchio" all'apertura o al ritorno in foreground,
+     lasciando uno spazio vuoto sotto la bottom nav finche' non arriva uno
+     scroll a forzare il ricalcolo. */
+  min-height: var(--app-vh, 100dvh);
   display: flex;
   flex-direction: column;
   position: relative;
