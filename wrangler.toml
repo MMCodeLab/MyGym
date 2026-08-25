@@ -9,13 +9,8 @@ main = "cloudflare-worker/worker.js"
 compatibility_date = "2026-08-23"
 
 # IMPORTANTE: la chiave GROQ_API_KEY non va mai scritta qui dentro (questo
-# file finisce su GitHub). Si imposta dalla dashboard di Cloudflare
-# (Worker "mygym-pt" -> Bindings -> Secrets Store) — istruzioni in
-# cloudflare-worker/worker.js.
-#
-# NOTA: un tentativo di dichiarare qui il binding [[secrets_store_secrets]]
-# ha rotto il collegamento gia' fatto a mano dalla dashboard (tornava
-# "Invalid API Key" nonostante la chiave fosse corretta). Finche' non
-# troviamo la sintassi giusta, il binding va ricollegato a mano dalla
-# dashboard dopo un deploy che tocca questo file — il codice del Worker
-# da solo non lo scollega mai.
+# file finisce su GitHub). Si imposta una sola volta dalla dashboard di
+# Cloudflare, Settings -> "Runtime" -> "Runtime variables and secrets"
+# (stesso posto usato da MySchool) — istruzioni dettagliate in
+# cloudflare-worker/worker.js. E' un secret legato al Worker stesso, quindi
+# sopravvive ai deploy automatici successivi senza bisogno di ricollegarlo.

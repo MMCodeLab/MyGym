@@ -13,19 +13,22 @@
 // L'UNICO passaggio manuale, da fare una volta sola nella dashboard
 // (e che i push successivi non toccano):
 //   1. https://dash.cloudflare.com -> Workers e Pages -> "mygym-pt".
-//   2. Tab "Settings" -> "Variables and Secrets" -> "Add".
-//   3. Type: "Secret" (non "Text", cosi' resta cifrata).
+//   2. Tab "Settings" -> nella sidebar della pagina Settings, voce "Runtime"
+//      (NON la voce generica in cima, e NON "Build": sono tre pannelli
+//      diversi con nomi simili. Solo "Runtime" e' quello letto dal Worker
+//      quando risponde a una richiesta — stessa impostazione usata da
+//      MySchool per il suo worker "myschool-groq-proxy").
+//   3. "Runtime variables and secrets" -> "Add variable".
+//   4. Type: "Secret" (non "Text", cosi' resta cifrata).
 //      Name: GROQ_API_KEY
 //      Value: la tua chiave da https://console.groq.com/keys
-//   4. Salva (ed esegui un deploy se richiesto).
+//   5. Salva. Non serve un binding "Secrets Store" — e' un prodotto diverso,
+//      pensato per condividere un secret tra piu' Worker, e per un singolo
+//      Worker come questo aggiunge solo complicazioni inutili.
 //
 // L'URL del Worker (tipo https://mygym-pt.<tuo-account>.workers.dev) si
 // trova in cima alla pagina del Worker su Cloudflare e va incollato in
 // js/views/personal-trainer.js (costante WORKER_URL).
-//
-// Nota: se aggiungi/modifichi il secret DOPO che il Worker e' gia' stato
-// distribuito, potrebbe non agganciarsi alla versione gia' attiva finche'
-// non parte una build nuova (un push, o "Retry deployment" dalla dashboard).
 
 const MODEL = 'openai/gpt-oss-120b';
 
@@ -132,20 +135,7 @@ export default {
 
       if (!groqRes.ok) {
         const detail = await groqRes.text();
-        // DEBUG TEMPORANEO — nessun dato sensibile: solo forma/lunghezza
-        // della chiave usata, per capire perche' Groq la rifiuta. Da
-        // rimuovere non appena risolto.
-        const keyDebug = {
-          bindingType: typeof env.GROQ_API_KEY,
-          hasGetMethod: !!(env.GROQ_API_KEY && typeof env.GROQ_API_KEY.get === 'function'),
-          resolvedType: typeof groqApiKey,
-          length: groqApiKey ? groqApiKey.length : 0,
-          prefix: groqApiKey ? groqApiKey.slice(0, 6) : null,
-          suffix: groqApiKey ? groqApiKey.slice(-4) : null,
-          hasWhitespace: groqApiKey ? /\s/.test(groqApiKey) : null,
-          trimmedLength: groqApiKey ? groqApiKey.trim().length : 0,
-        };
-        return json({ error: 'Groq ha risposto con un errore.', detail, keyDebug }, 502, origin);
+        return json({ error: 'Groq ha risposto con un errore.', detail }, 502, origin);
       }
 
       const data = await groqRes.json();
