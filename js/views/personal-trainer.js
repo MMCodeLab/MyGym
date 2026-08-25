@@ -6,9 +6,7 @@
 
 const { store, MUSCLE_GROUPS, muscleGroup, MAX_MUSCLE_GROUPS_PER_EXERCISE, icon, escapeHtml, showToast, navigate } = window.MyGym;
 
-// TODO: sostituisci con l'URL reale del tuo Worker dopo averlo distribuito
-// (Cloudflare -> Workers e Pages -> il tuo worker -> "Visit"/"URL").
-const WORKER_URL = 'https://REPLACE-WITH-YOUR-WORKER-URL.workers.dev';
+const WORKER_URL = 'https://mygym-pt.minnitijunior.workers.dev/';
 
 const GENDERS = ['Uomo', 'Donna', 'Altro'];
 const GOALS = ['Dimagrimento', 'Ipertrofia', 'Forza', 'Resistenza', 'Tonificazione'];

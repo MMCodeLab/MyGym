@@ -22,6 +22,10 @@
 // L'URL del Worker (tipo https://mygym-pt.<tuo-account>.workers.dev) si
 // trova in cima alla pagina del Worker su Cloudflare e va incollato in
 // js/views/personal-trainer.js (costante WORKER_URL).
+//
+// Nota: se aggiungi/modifichi il secret DOPO che il Worker e' gia' stato
+// distribuito, potrebbe non agganciarsi alla versione gia' attiva finche'
+// non parte una build nuova (un push, o "Retry deployment" dalla dashboard).
 
 const MODEL = 'llama-3.3-70b-versatile';
 
