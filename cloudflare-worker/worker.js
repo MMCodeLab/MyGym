@@ -27,7 +27,7 @@
 // distribuito, potrebbe non agganciarsi alla versione gia' attiva finche'
 // non parte una build nuova (un push, o "Retry deployment" dalla dashboard).
 
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'openai/gpt-oss-120b';
 
 const MUSCLE_KEYS = [
   'petto', 'schiena', 'gambe', 'spalle', 'bicipiti', 'tricipiti',

@@ -9,5 +9,13 @@ main = "cloudflare-worker/worker.js"
 compatibility_date = "2026-08-23"
 
 # IMPORTANTE: la chiave GROQ_API_KEY non va mai scritta qui dentro (questo
-# file finisce su GitHub). Si imposta una sola volta dalla dashboard di
-# Cloudflare come "secret" — istruzioni in cloudflare-worker/worker.js.
+# file finisce su GitHub). Il suo VALORE si imposta una sola volta dalla
+# dashboard di Cloudflare (Secrets Store) — istruzioni in cloudflare-worker/worker.js.
+#
+# Questo blocco collega solo il NOME del secret al Worker (nessun valore),
+# cosi' ogni nuovo deploy automatico via GitHub mantiene il collegamento
+# invece di scollegarlo (e' quello che succedeva prima di aggiungerlo).
+[[secrets_store_secrets]]
+binding = "GROQ_API_KEY"
+store_id = "e1151a462709444c9cca6c5e4b8992f2"
+secret_name = "GROQ_API_KEY"
