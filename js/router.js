@@ -53,6 +53,9 @@ function route() {
   } else if (parts[0] === 'esercizi') {
     routeKey = 'esercizi';
     renderFn = views.exercises.render;
+  } else if (parts[0] === 'pt') {
+    routeKey = 'pt';
+    renderFn = views.personalTrainer.render;
   } else if (parts[0] === 'impostazioni') {
     routeKey = 'impostazioni';
     renderFn = views.settings.render;

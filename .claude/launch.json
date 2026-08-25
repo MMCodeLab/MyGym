@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["serve.py", "5500"],
       "port": 5500
+    },
+    {
+      "name": "myverse-dev",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5556", "--directory", "C:/Users/minni/Documents/MYVERSE_STARTUP_PWA"],
+      "port": 5556
     }
   ]
 }

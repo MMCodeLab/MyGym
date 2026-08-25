@@ -21,8 +21,11 @@ Nessun account, nessuna pubblicità: solo uno strumento semplice per tenere orga
 ## Funzionalità principali
 
 - Elenco **giorni** di allenamento: crea, rinomina, elimina, con anteprima dei gruppi muscolari coinvolti.
-- Dentro ogni giorno: aggiungi/rimuovi esercizi dalla tua libreria, imposta serie × ripetizioni, riordina.
-- Libreria **esercizi** globale: crea un esercizio scegliendo nome, parte del corpo (tra 12 gruppi muscolari) e immagine illustrativa suggerita automaticamente.
+- Dentro ogni giorno: aggiungi/rimuovi esercizi dalla tua libreria, imposta serie × ripetizioni.
+- Libreria **esercizi** globale: crea un esercizio scegliendo nome, fino a 3 parti del corpo e immagine illustrativa suggerita automaticamente (con descrizione tradotta in italiano).
+- **Inizia allenamento**: cronometro, registrazione serie×reps×kg per ogni esercizio con suggerimenti dal giorno scelto, riepilogo finale.
+- **Storico allenamenti** e grafico dei progressi (Impostazioni → Allenamenti).
+- **Virtual Personal Trainer**: genera una scheda su misura con l'IA (Groq) a partire da dati, obiettivo e livello — vedi [`cloudflare-worker/`](cloudflare-worker/worker.js) per la configurazione.
 - **Impostazioni**: tema chiaro/scuro (scuro di default), esportazione/importazione backup in JSON, cancellazione dati.
 - Installabile come app, con funzionamento offline.
 
@@ -63,12 +66,28 @@ css/styles.css               design system: glassmorphism, temi, animazioni
 js/
   app.js                    bootstrap dell'app
   state.js                  store dati + persistenza in localStorage
-  router.js                  routing via hash (#/, #/day/:id, #/esercizi, #/impostazioni)
+  router.js                  routing via hash (#/, #/day/:id, #/esercizi, #/allenamento, #/storico, #/pt, #/impostazioni)
   components.js              helper UI condivisi (modali, toast, icone SVG)
-  exercise-api.js            ricerca immagini esercizio
-  views/                      home, dettaglio giorno, libreria esercizi, impostazioni
+  exercise-api.js            ricerca immagini esercizio + traduzione
+  views/
+    home.js, day.js            giorni di allenamento
+    exercises.js                libreria esercizi
+    workout.js                  Inizia allenamento (cronometro, serie/reps/kg)
+    workout-history.js          storico + grafico progressi
+    personal-trainer.js         Virtual Personal Trainer (IA via Cloudflare Worker)
+    settings.js                 impostazioni
 icons/                        icone PWA
+cloudflare-worker/worker.js   proxy verso Groq per il Virtual Personal Trainer (chiave nascosta lato server)
+wrangler.toml                 config per il deploy automatico del Worker (Cloudflare Workers Builds)
 ```
+
+## Virtual Personal Trainer
+
+Genera una scheda di allenamento con l'IA (modello Llama 3.3 via [Groq](https://groq.com), gratuito) a partire da età, peso, obiettivo, livello e giorni disponibili. Per funzionare usa un piccolo Cloudflare Worker (`mygym-pt`) che fa da proxy verso Groq, così la chiave API resta nascosta e non finisce mai nel codice pubblicato su GitHub.
+
+Il Worker è collegato a questo repository tramite **Cloudflare Workers Builds**: ad ogni push su GitHub, Cloudflare lo ridistribuisce da solo leggendo [`wrangler.toml`](wrangler.toml) (nella radice) e [`cloudflare-worker/worker.js`](cloudflare-worker/worker.js) — nessun passaggio manuale da rifare. L'unica cosa impostata una volta sola nella dashboard di Cloudflare (Settings del Worker → Variables and Secrets) è il *secret* `GROQ_API_KEY`, che i push non toccano.
+
+L'URL del Worker va incollato in [`js/views/personal-trainer.js`](js/views/personal-trainer.js) (costante `WORKER_URL`). Senza questo passaggio la sezione mostra un messaggio che lo spiega, il resto dell'app funziona comunque normalmente.
 
 ## Note tecniche: l'API per le foto degli esercizi
 

@@ -1,0 +1,13 @@
+# Configurazione per Cloudflare Workers Builds: ad ogni push su GitHub,
+# Cloudflare esegue "npx wrangler deploy" da qui e aggiorna il Worker.
+#
+# "name" deve combaciare ESATTAMENTE con il Worker gia' creato su Cloudflare
+# ("mygym-pt"), altrimenti il deploy prova a crearne uno nuovo invece di
+# aggiornare quello esistente.
+name = "mygym-pt"
+main = "cloudflare-worker/worker.js"
+compatibility_date = "2026-08-23"
+
+# IMPORTANTE: la chiave GROQ_API_KEY non va mai scritta qui dentro (questo
+# file finisce su GitHub). Si imposta una sola volta dalla dashboard di
+# Cloudflare come "secret" — istruzioni in cloudflare-worker/worker.js.

@@ -24,6 +24,7 @@ const ICONS = {
   pause: '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
   flag: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"/><path d="M4 4h14l-3 4 3 4H4"/></svg>',
   chartBar: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"/><path d="M2 20h20"/></svg>',
+  sparkles: '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none"><path d="M12 2.5c.35 0 .66.23.76.57l1.28 4.3 4.3 1.28a.79.79 0 0 1 0 1.52l-4.3 1.28-1.28 4.3a.79.79 0 0 1-1.52 0l-1.28-4.3-4.3-1.28a.79.79 0 0 1 0-1.52l4.3-1.28 1.28-4.3c.1-.34.41-.57.76-.57Z"/><path d="M19 14.2c.28 0 .53.19.6.46l.5 1.75 1.75.5a.63.63 0 0 1 0 1.2l-1.75.5-.5 1.75a.63.63 0 0 1-1.2 0l-.5-1.75-1.75-.5a.63.63 0 0 1 0-1.2l1.75-.5.5-1.75a.63.63 0 0 1 .6-.46Z"/></svg>',
 };
 
 function icon(name) {
