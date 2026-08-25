@@ -1,7 +1,76 @@
 // Script classico (non un modulo ES): espone tutto su window.MyGym.views.settings.
 (function () {
 
-const { store, icon, showToast, confirmAction, navigate } = window.MyGym;
+const { store, icon, showToast, confirmAction, navigate, openModal } = window.MyGym;
+
+const FORMSPREE_ENDPOINT = 'https://formspree.io/f/xykgbzya';
+const INSTAGRAM_URL = 'https://www.instagram.com/myproject_pwa?igsi=aTNwM3dpdWw1ZjU%3D&utm_source=qr';
+const GITHUB_URL = 'https://github.com/MMCodeLab';
+
+function openContactModal() {
+  openModal({
+    title: 'Contattaci',
+    bodyHtml: `
+      <p class="text-secondary" style="margin-top:0">Hai trovato un bug, hai un'idea o vuoi solo salutare? Scrivi un messaggio e ti risponderò appena possibile.</p>
+      <form id="contact-form">
+        <input type="hidden" name="_subject" value="Nuovo messaggio da MyGym" />
+        <div class="field">
+          <label for="contact-email-input">La tua email</label>
+          <input type="email" class="input" id="contact-email-input" name="email" placeholder="La tua email" required />
+        </div>
+        <div class="field">
+          <label for="contact-message-input">Il tuo messaggio</label>
+          <textarea class="textarea" id="contact-message-input" name="message" rows="4" placeholder="Il tuo messaggio" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="contact-submit-btn">Invia</button>
+        <p id="contact-status" class="form-error" style="display:none"></p>
+      </form>
+      <div class="social-row">
+        <a href="${INSTAGRAM_URL}" target="_blank" rel="noopener noreferrer" class="btn btn-glass social-btn">${icon('instagram')} Instagram</a>
+        <a href="${GITHUB_URL}" target="_blank" rel="noopener noreferrer" class="btn btn-glass social-btn">${icon('github')} GitHub</a>
+      </div>
+    `,
+    onMount: (body) => {
+      const form = body.querySelector('#contact-form');
+      const statusEl = body.querySelector('#contact-status');
+      const submitBtn = body.querySelector('#contact-submit-btn');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        statusEl.style.display = 'none';
+        statusEl.classList.remove('form-success');
+        statusEl.classList.add('form-error');
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Invio in corso…';
+
+        try {
+          const res = await fetch(FORMSPREE_ENDPOINT, {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+            body: new FormData(form),
+          });
+          if (res.ok) {
+            statusEl.textContent = 'Messaggio inviato, grazie!';
+            statusEl.classList.remove('form-error');
+            statusEl.classList.add('form-success');
+            statusEl.style.display = 'block';
+            form.reset();
+          } else {
+            statusEl.textContent = 'Qualcosa è andato storto. Riprova.';
+            statusEl.style.display = 'block';
+          }
+        } catch (err) {
+          statusEl.textContent = 'Errore di rete. Riprova.';
+          statusEl.style.display = 'block';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Invia';
+        }
+      });
+    },
+  });
+}
 
 function download(filename, text) {
   const blob = new Blob([text], { type: 'application/json' });
@@ -88,10 +157,21 @@ function render(container) {
       </div>
     </div>
 
+    <div class="settings-section">
+      <h3>Contattaci</h3>
+      <div class="settings-row glass" id="contact-row" style="cursor:pointer">
+        <div class="settings-row-text">
+          <div class="settings-row-title">Scrivici un messaggio</div>
+          <div class="settings-row-desc">Bug, idee o solo per salutare: siamo su un modulo di contatto, Instagram e GitHub.</div>
+        </div>
+      </div>
+    </div>
+
     <p class="text-center text-secondary" style="font-size:0.75rem;margin-top:8px">© ${new Date().getFullYear()} Matteo Minniti. Tutti i diritti riservati.</p>
   `;
 
   container.querySelector('#workouts-row').addEventListener('click', () => navigate('#/storico'));
+  container.querySelector('#contact-row').addEventListener('click', openContactModal);
 
   const segmented = container.querySelector('#theme-segmented');
   segmented.querySelectorAll('[data-theme-opt]').forEach((opt) => {

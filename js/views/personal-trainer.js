@@ -23,6 +23,7 @@ let lastError = null;
 
 let formState = {
   name: '',
+  surname: '',
   age: '',
   weight: '',
   weightUnit: 'kg',
@@ -113,9 +114,15 @@ function renderForm(container) {
     </div>
     <p class="section-subtitle">Racconta qualcosa di te: un'IA prepara una scheda su misura.</p>
 
-    <div class="field">
-      <label for="pt-name">Nome</label>
-      <input type="text" class="input" id="pt-name" placeholder="Il tuo nome" maxlength="40" value="${escapeHtml(formState.name)}" />
+    <div class="flex gap-3">
+      <div class="field" style="flex:1">
+        <label for="pt-name">Nome</label>
+        <input type="text" class="input" id="pt-name" placeholder="Il tuo nome" maxlength="40" value="${escapeHtml(formState.name)}" />
+      </div>
+      <div class="field" style="flex:1">
+        <label for="pt-surname">Cognome</label>
+        <input type="text" class="input" id="pt-surname" placeholder="Il tuo cognome" maxlength="40" value="${escapeHtml(formState.surname)}" />
+      </div>
     </div>
 
     <div class="field">
@@ -179,6 +186,7 @@ function renderForm(container) {
   `;
 
   container.querySelector('#pt-name').addEventListener('change', (e) => { formState.name = e.target.value; });
+  container.querySelector('#pt-surname').addEventListener('change', (e) => { formState.surname = e.target.value; });
   container.querySelector('#pt-age').addEventListener('change', (e) => { formState.age = e.target.value; });
   container.querySelector('#pt-weight').addEventListener('change', (e) => { formState.weight = e.target.value; });
   container.querySelector('#pt-notes').addEventListener('change', (e) => { formState.notes = e.target.value; });
