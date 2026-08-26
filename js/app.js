@@ -21,11 +21,26 @@ function setAppHeight() {
 // quando arriva un vero evento di scroll. Lo simuliamo noi (spostamento di 1px
 // e subito indietro, impercettibile) cosi' l'utente non deve farlo a mano.
 function nudgeViewport() {
+  const de = document.documentElement;
+  // Se la pagina e' piu' corta del viewport (es. un giorno senza esercizi,
+  // vedi screenshot del bug) non c'e' nulla da scorrere: scrollTo sotto
+  // sarebbe un no-op e non forzerebbe alcun ricalcolo. Garantiamo sempre un
+  // filo di overflow finto solo per la durata del nudge. Usiamo innerHeight
+  // (mai 0) e non clientHeight, che a script appena partito - prima che il
+  // layout esista - puo' leggere 0.
+  de.style.minHeight = `${window.innerHeight + 40}px`;
   window.scrollTo(0, 1);
   // setTimeout invece di requestAnimationFrame: rAF puo' non scattare mai se
   // la scheda non e' visibile/in primo piano nel momento in cui l'app si
   // apre (es. tornando da un'altra app), lasciando lo scroll bloccato a 1px.
-  setTimeout(() => window.scrollTo(0, 0), 16);
+  // Nessun altro codice imposta un min-height inline su <html>: pulire
+  // sempre a stringa vuota (invece di salvare/ripristinare un valore
+  // "precedente") evita che chiamate ravvicinate si accavallino e lascino un
+  // valore intermedio incastrato.
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+    de.style.minHeight = '';
+  }, 16);
 }
 function refreshViewport() {
   setAppHeight();
