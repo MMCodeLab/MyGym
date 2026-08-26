@@ -4,7 +4,7 @@
 // distribuito una volta sola; l'URL qui sotto va aggiornato con quello reale.
 (function () {
 
-const { store, MUSCLE_GROUPS, muscleGroup, MAX_MUSCLE_GROUPS_PER_EXERCISE, icon, escapeHtml, showToast, navigate } = window.MyGym;
+const { store, MUSCLE_GROUPS, muscleGroup, MAX_MUSCLE_GROUPS_PER_EXERCISE, icon, escapeHtml, showToast, navigate, findAutoExerciseMatch } = window.MyGym;
 
 const WORKER_URL = 'https://mygym-pt.minnitijunior.workers.dev/';
 
@@ -317,20 +317,46 @@ function planDayCardHtml(day) {
   `;
 }
 
-function importPlanToDays(plan) {
+// Le foto vengono cercate nello stesso dataset usato dalla ricerca manuale
+// (vedi exercise-api.js: findAutoExerciseMatch). Prima si raccolgono tutti i
+// nomi nuovi della scheda (una sola ricerca per nome, anche se ricorre in piu'
+// giorni) e si cercano in parallelo, poi si creano davvero i giorni/esercizi.
+async function importPlanToDays(plan) {
+  const existingByName = new Map(store.get().exercises.map((e) => [e.name.toLowerCase(), e]));
+  const toMatch = new Map(); // nome minuscolo -> { name, groups }
+
+  plan.days.forEach((day) => {
+    (day.exercises || []).forEach((ex) => {
+      const name = (ex.name || 'Esercizio').trim();
+      const key = name.toLowerCase();
+      if (existingByName.has(key) || toMatch.has(key)) return;
+      const groups = (ex.muscleGroups || []).filter((k) => MUSCLE_GROUPS.some((mg) => mg.key === k)).slice(0, MAX_MUSCLE_GROUPS_PER_EXERCISE);
+      toMatch.set(key, { name, groups });
+    });
+  });
+
+  const matches = new Map(); // nome minuscolo -> { imageUrl, description } | null
+  await Promise.all(Array.from(toMatch.values()).map(async ({ name, groups }) => {
+    const match = await findAutoExerciseMatch(name, groups).catch(() => null);
+    matches.set(name.toLowerCase(), match);
+  }));
+
   plan.days.forEach((day) => {
     const newDay = store.addDay(day.name || 'Giorno IA');
     (day.exercises || []).forEach((ex) => {
-      const groups = (ex.muscleGroups || []).filter((k) => MUSCLE_GROUPS.some((mg) => mg.key === k)).slice(0, MAX_MUSCLE_GROUPS_PER_EXERCISE);
       const name = (ex.name || 'Esercizio').trim();
-      let existing = store.get().exercises.find((e) => e.name.toLowerCase() === name.toLowerCase());
+      const key = name.toLowerCase();
+      let existing = existingByName.get(key);
       if (!existing) {
+        const pending = toMatch.get(key);
+        const match = matches.get(key);
         existing = store.addExercise({
           name,
-          muscleGroups: groups.length ? groups : ['altro'],
-          imageUrl: null,
-          description: null,
+          muscleGroups: pending.groups.length ? pending.groups : ['altro'],
+          imageUrl: match ? match.imageUrl : null,
+          description: match ? match.description : null,
         });
+        existingByName.set(key, existing);
       }
       store.addExerciseToDay(newDay.id, existing.id, { sets: ex.sets || 3, reps: ex.reps || 10 });
     });
@@ -351,11 +377,22 @@ function renderResult(container, plan) {
     <button class="btn btn-glass btn-block mt-2" id="pt-again-btn">Genera un'altra scheda</button>
   `;
 
-  container.querySelector('#pt-import-btn').addEventListener('click', () => {
-    importPlanToDays(plan);
-    showToast('Giorni aggiunti alla tua libreria');
-    screen = 'form';
-    navigate('#/');
+  container.querySelector('#pt-import-btn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    if (btn.disabled) return;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span style="display:inline-block;animation:spin 1.6s linear infinite">${icon('sparkles')}</span> Cerco le foto degli esercizi...`;
+    try {
+      await importPlanToDays(plan);
+      showToast('Giorni aggiunti alla tua libreria');
+      screen = 'form';
+      navigate('#/');
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      showToast('Errore durante l\'importazione, riprova.');
+    }
   });
 
   container.querySelector('#pt-again-btn').addEventListener('click', () => {
