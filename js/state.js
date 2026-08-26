@@ -29,8 +29,21 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+// Stima del massimale (formula di Epley): permette di confrontare serie con
+// combinazioni diverse di peso/reps sulla stessa scala per capire qual e' la piu' forte.
+function estimated1RM(weight, reps) {
+  if (!weight || !reps) return 0;
+  return weight * (1 + reps / 30);
+}
+
+// Le serie "libere" (senza esercizio in libreria) vengono confrontate per nome,
+// cosi' un record personale funziona anche senza aver salvato l'esercizio.
+function recordKey(exerciseId, name) {
+  return exerciseId || `free:${(name || '').trim().toLowerCase()}`;
+}
+
 function defaultState() {
-  return { theme: 'dark', exercises: [], days: [], workouts: [], activeWorkout: null };
+  return { theme: 'dark', exercises: [], days: [], workouts: [], activeWorkout: null, restTimerSeconds: 90 };
 }
 
 const MAX_MUSCLE_GROUPS_PER_EXERCISE = 3;
@@ -89,6 +102,26 @@ const store = {
     state.theme = theme;
     save();
     applyTheme();
+  },
+
+  // ---- Timer di recupero ----
+  setRestTimerSeconds(seconds) {
+    state.restTimerSeconds = seconds;
+    save();
+  },
+  // Salva solo l'orario di fine (non un countdown che ticchetta): cosi' il
+  // tempo rimasto si ricalcola sempre dall'orologio reale, anche se l'app
+  // e' rimasta in background e i timer del browser sono stati rallentati.
+  startRestTimer(seconds) {
+    if (!state.activeWorkout) return null;
+    state.activeWorkout.restTimer = { endTime: Date.now() + seconds * 1000 };
+    save();
+    return state.activeWorkout.restTimer;
+  },
+  clearRestTimer() {
+    if (!state.activeWorkout) return;
+    state.activeWorkout.restTimer = null;
+    save();
   },
 
   // ---- Exercises (global library) ----
@@ -184,6 +217,7 @@ const store = {
       elapsedMs: 0,
       running: true,
       exercises: [], // { id, exerciseId, name, muscles: [], sets: [{ reps, weight }] }
+      restTimer: null, // { endTime } quando il timer di recupero e' attivo
     };
     state.activeWorkout = workout;
     save();
@@ -243,6 +277,35 @@ const store = {
   discardActiveWorkout() {
     state.activeWorkout = null;
     save();
+  },
+
+  // ---- Record personali ----
+  // Cerca, in tutto lo storico salvato, la serie con la stima di massimale piu' alta
+  // per lo stesso esercizio (o lo stesso nome, per gli esercizi liberi).
+  bestHistoricalSet(exerciseId, name) {
+    const key = recordKey(exerciseId, name);
+    let best = null;
+    state.workouts.forEach((w) => {
+      w.exercises.forEach((e) => {
+        if (recordKey(e.exerciseId, e.name) !== key) return;
+        e.sets.forEach((s) => {
+          const oneRM = estimated1RM(s.weight, s.reps);
+          if (oneRM > 0 && (!best || oneRM > best.oneRM)) {
+            best = { weight: s.weight, reps: s.reps, oneRM };
+          }
+        });
+      });
+    });
+    return best;
+  },
+  // Ritorna null se non c'e' ancora abbastanza storico per un confronto
+  // (niente peso/reps, oppure prima volta in assoluto per questo esercizio).
+  checkPersonalRecord({ exerciseId, name, weight, reps }) {
+    const oneRM = estimated1RM(weight, reps);
+    if (!oneRM) return null;
+    const best = store.bestHistoricalSet(exerciseId, name);
+    if (!best) return null;
+    return { isRecord: oneRM > best.oneRM, previousBest: best, oneRM };
   },
 
   // ---- Storico allenamenti ----

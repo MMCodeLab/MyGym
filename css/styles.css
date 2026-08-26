@@ -25,6 +25,7 @@
   --accent-b: #06b6d4;
   --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
   --danger: #f43f5e;
+  --gold: #f4b740;
 
   /* Muscle group accent hues */
   --mg-petto: #f97316;
@@ -562,6 +563,13 @@ a { color: inherit; text-decoration: none; }
   animation: toast-in .35s var(--ease-spring);
 }
 .toast.leaving { animation: toast-out .3s var(--ease-out) forwards; }
+.toast-record {
+  background: linear-gradient(135deg, rgba(244, 183, 64, 0.22), var(--glass-bg-strong));
+  border-color: rgba(244, 183, 64, 0.55);
+  box-shadow: var(--glass-shadow), 0 0 24px rgba(244, 183, 64, 0.3);
+  animation: toast-in .35s var(--ease-spring), toast-record-pulse 1.4s ease-in-out .35s;
+}
+@keyframes toast-record-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
 @keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes toast-out { to { opacity: 0; transform: translateY(10px) scale(0.9); } }
 
@@ -738,6 +746,28 @@ a { color: inherit; text-decoration: none; }
   white-space: nowrap;
 }
 
+/* ---------- Timer di recupero (Inizia allenamento) ---------- */
+.rest-timer-bar { border-radius: var(--radius-lg); margin-bottom: var(--space-3); overflow: hidden; }
+.rest-timer-start-btn { margin: 0; }
+.rest-timer-running { display: flex; align-items: center; gap: var(--space-3); padding: 10px 14px; position: relative; }
+.rest-timer-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.25), rgba(6, 182, 212, 0.18));
+  transition: width 0.22s linear;
+}
+.rest-timer-info { position: relative; z-index: 1; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rest-timer-time {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.rest-timer-label { font-size: 0.78rem; color: var(--text-secondary); }
+.rest-timer-running .icon-btn { position: relative; z-index: 1; flex-shrink: 0; }
+
 /* ---------- Esercizio in allenamento (serie/reps/kg) ---------- */
 .workout-exercise-card { display: flex; flex-direction: column; }
 .workout-exercise-name {
@@ -755,9 +785,14 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color .25s var(--ease-out), padding .25s var(--ease-out);
 }
 .set-row-readonly { justify-content: space-between; }
-.set-label { font-size: 0.8rem; color: var(--text-secondary); width: 54px; flex-shrink: 0; }
+.set-row.is-pr { background: rgba(244, 183, 64, 0.1); padding: 4px 6px; margin: -4px -6px; }
+.set-label { font-size: 0.8rem; color: var(--text-secondary); width: 54px; flex-shrink: 0; display: flex; align-items: center; gap: 3px; }
+.set-row.is-pr .set-label { color: var(--gold); font-weight: 700; }
+.set-label svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--gold); }
 .input-set { width: 100%; min-width: 0; padding: 8px 6px; text-align: center; }
 .set-x { color: var(--text-tertiary); font-size: 0.8rem; flex-shrink: 0; }
 .set-unit { color: var(--text-tertiary); font-size: 0.75rem; flex-shrink: 0; }

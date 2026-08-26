@@ -72,6 +72,27 @@ function openContactModal() {
   });
 }
 
+const REST_DURATION_PRESETS = [30, 60, 90, 120, 180, 300];
+
+function formatRestPresetLabel(seconds) {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s ? `${m}:${String(s).padStart(2, '0')}` : `${m} min`;
+}
+
+function restNotifStatus() {
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission; // 'default' | 'granted' | 'denied'
+}
+
+const REST_NOTIF_COPY = {
+  unsupported: { title: 'Non disponibili', desc: 'Il tuo browser non supporta le notifiche.' },
+  denied: { title: 'Bloccate dal browser', desc: 'Hai bloccato le notifiche per questo sito: riattivale dalle impostazioni del browser per usarle anche a schermo spento.' },
+  granted: { title: 'Attive', desc: 'Quando il timer di recupero finisce ricevi una notifica con vibrazione, anche se cambi app.' },
+  default: { title: 'Da attivare', desc: 'Tocca per attivarle: ti avvisano anche se sei uscito dall\'app mentre il timer è in corso.' },
+};
+
 function download(filename, text) {
   const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -85,7 +106,7 @@ function download(filename, text) {
 }
 
 function render(container) {
-  const { theme } = store.get();
+  const { theme, restTimerSeconds } = store.get();
   const activeIndex = theme === 'dark' ? 0 : 1;
 
   container.innerHTML = `
@@ -115,6 +136,27 @@ function render(container) {
         <span class="segmented-thumb"></span>
         <span class="segmented-opt ${theme === 'dark' ? 'active' : ''}" data-theme-opt="dark">${icon('moon')} Scuro</span>
         <span class="segmented-opt ${theme === 'light' ? 'active' : ''}" data-theme-opt="light">${icon('sun')} Chiaro</span>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Timer di recupero</h3>
+      <div class="settings-row glass">
+        <div class="settings-row-text">
+          <div class="settings-row-title">Durata predefinita</div>
+          <div class="settings-row-desc">Usata dal tasto "Tempo di recupero" durante l'allenamento.</div>
+        </div>
+      </div>
+      <div class="chip-row" id="rest-duration-chips">
+        ${REST_DURATION_PRESETS.map((s) => `
+          <span class="chip ${s === restTimerSeconds ? 'selected' : ''}" data-rest-seconds="${s}" ${s === restTimerSeconds ? 'style="background:var(--accent-gradient);border-color:transparent"' : ''}>${formatRestPresetLabel(s)}</span>
+        `).join('')}
+      </div>
+      <div class="settings-row glass" id="rest-notif-row" ${restNotifStatus() === 'default' ? 'style="cursor:pointer"' : ''}>
+        <div class="settings-row-text">
+          <div class="settings-row-title">Notifiche a fine recupero — ${REST_NOTIF_COPY[restNotifStatus()].title}</div>
+          <div class="settings-row-desc">${REST_NOTIF_COPY[restNotifStatus()].desc}</div>
+        </div>
       </div>
     </div>
 
@@ -180,6 +222,19 @@ function render(container) {
       store.setTheme(newTheme);
       render(container);
     });
+  });
+
+  container.querySelectorAll('[data-rest-seconds]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      store.setRestTimerSeconds(Number(chip.dataset.restSeconds));
+      render(container);
+    });
+  });
+
+  container.querySelector('#rest-notif-row').addEventListener('click', async () => {
+    if (restNotifStatus() !== 'default') return;
+    await Notification.requestPermission();
+    render(container);
   });
 
   container.querySelector('#export-row').addEventListener('click', () => {

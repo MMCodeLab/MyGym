@@ -8,10 +8,34 @@
       "port": 5500
     },
     {
+      "name": "mygym-dev-2",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["serve.py", "5510"],
+      "port": 5510
+    },
+    {
       "name": "myverse-dev",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "5556", "--directory", "C:/Users/minni/Documents/MYVERSE_STARTUP_PWA"],
       "port": 5556
+    },
+    {
+      "name": "schola-dev-2",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5511", "--directory", "C:/Users/minni/Documents/MYSCHOOL_STARTUP_PWA"],
+      "port": 5511
+    },
+    {
+      "name": "ispiramy-dev",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5521", "--directory", "C:/Users/minni/Documents/ISPIRA-MY_STARTUP_PWA"],
+      "port": 5521
+    },
+    {
+      "name": "mymoney-dev",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5557", "--directory", "C:/Users/minni/Documents/MYMONEY_STARTUP_PWA"],
+      "port": 5557
     }
   ]
 }

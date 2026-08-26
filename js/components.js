@@ -83,16 +83,17 @@ function closeModal() {
 }
 
 // ---------- Toast ----------
-function showToast(message) {
+function showToast(message, { variant } = {}) {
   const root = document.getElementById('toast-root');
   const el = document.createElement('div');
-  el.className = 'toast';
+  el.className = variant ? `toast toast-${variant}` : 'toast';
   el.textContent = message;
   root.appendChild(el);
+  const duration = variant === 'record' ? 3200 : 2200;
   setTimeout(() => {
     el.classList.add('leaving');
     setTimeout(() => el.remove(), 320);
-  }, 2200);
+  }, duration);
 }
 
 // ---------- Confirm ----------

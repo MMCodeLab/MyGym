@@ -6,6 +6,8 @@ const { store, MUSCLE_GROUPS, muscleGroup, icon, escapeHtml, openModal, closeMod
 let currentContainer = null;
 let justFinished = null; // record appena salvato, per mostrare il riepilogo
 let tickInterval = null;
+let restTickInterval = null;
+let wakeLockSentinel = null;
 
 function formatElapsed(ms) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -19,6 +21,193 @@ function formatElapsed(ms) {
 function currentElapsedMs(w) {
   return w.elapsedMs + (w.running ? Date.now() - w.startedAt : 0);
 }
+
+// Marca (o smarca) visivamente una serie come record personale, confrontandola
+// con il meglio storico. Non mostra il toast: serve sia per il check silenzioso
+// al render sia come base per la celebrazione al cambio valore. Ritorna true/false.
+function evaluateSetRecord(entry, setIndex, row) {
+  const set = entry.sets[setIndex];
+  const label = row.querySelector('.set-label');
+  const isPr = !!(set && set.weight && set.reps &&
+    store.checkPersonalRecord({ exerciseId: entry.exerciseId, name: entry.name, weight: set.weight, reps: set.reps })?.isRecord);
+  row.classList.toggle('is-pr', isPr);
+  if (label) label.innerHTML = (isPr ? icon('sparkles') : '') + `Serie ${setIndex + 1}`;
+  return isPr;
+}
+
+// Ricontrolla tutte le serie gia' compilate (es. dopo un refresh a meta' allenamento
+// o dopo aver aggiunto/rimosso un esercizio), senza celebrare nulla.
+function markExistingRecords(container) {
+  const w = store.getActiveWorkout();
+  if (!w) return;
+  container.querySelectorAll('.workout-exercise-card').forEach((card) => {
+    const entry = w.exercises.find((e) => e.id === card.dataset.entryId);
+    if (!entry) return;
+    card.querySelectorAll('.set-row').forEach((row, i) => evaluateSetRecord(entry, i, row));
+  });
+}
+
+// ---------- Timer di recupero ----------
+
+function formatRestTime(totalSeconds) {
+  const s = Math.max(0, totalSeconds);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+// Tiene lo schermo acceso mentre si riposa, cosi' non si blocca da solo per
+// inattivita' prima che il timer finisca. Il browser rilascia da solo il
+// wake lock quando la scheda va in background: non c'e' nulla da fare in
+// quel caso, e' un limite della piattaforma (vedi nota nel README).
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLockSentinel = await navigator.wakeLock.request('screen');
+    wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; });
+  } catch (e) {
+    // negato o non disponibile in questo contesto: si procede comunque, il
+    // countdown resta corretto perche' si basa sull'orario assoluto di fine
+  }
+}
+function releaseWakeLock() {
+  if (wakeLockSentinel) {
+    wakeLockSentinel.release().catch(() => {});
+    wakeLockSentinel = null;
+  }
+}
+
+// Richiesta silenziosa e non bloccante, solo se non e' mai stata ne' concessa
+// ne' negata: il timer parte comunque, la notifica e' solo un canale in piu'.
+function requestRestNotificationPermissionIfNeeded() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+}
+
+function fireRestTimerCompleteAlert() {
+  if (typeof navigator.vibrate === 'function') navigator.vibrate([250, 100, 250, 100, 400]);
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      const n = new Notification('Tempo di recupero finito', {
+        body: 'Torna alla prossima serie.',
+        icon: 'icons/icon-192.png',
+        tag: 'mygym-rest-timer',
+        renotify: true,
+        vibrate: [250, 100, 250, 100, 400],
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch (e) {
+      // qualche browser puo' comunque rifiutare la notifica anche a permesso concesso
+    }
+  }
+
+  showToast('⏱️ Tempo di recupero finito!');
+}
+
+function restTimerBarHtml(restTimer) {
+  if (!restTimer) {
+    return `<button class="btn btn-glass btn-block rest-timer-start-btn" id="rest-timer-start-btn">${icon('stopwatch')} Tempo di recupero</button>`;
+  }
+  const remainingSec = Math.ceil((restTimer.endTime - Date.now()) / 1000);
+  const total = store.get().restTimerSeconds || 90;
+  const pct = Math.max(0, Math.min(100, (remainingSec / total) * 100));
+  return `
+    <div class="rest-timer-running">
+      <div class="rest-timer-progress-fill" id="rest-timer-progress-fill" style="width:${pct}%"></div>
+      <div class="rest-timer-info">
+        <span class="rest-timer-time" id="rest-timer-time">${formatRestTime(remainingSec)}</span>
+        <span class="rest-timer-label">Recupero in corso…</span>
+      </div>
+      <button class="icon-btn" id="rest-timer-cancel-btn" aria-label="Annulla recupero">${icon('close')}</button>
+    </div>
+  `;
+}
+
+// Ridisegna solo la barra del timer di recupero (non tutto lo schermo
+// allenamento), e gestisce il proprio giro di aggiornamento: il tempo
+// rimasto si ricalcola sempre dall'orario assoluto di fine, mai da un
+// contatore che scala, cosi' resta corretto anche se il tick e' arrivato
+// in ritardo (tab in background, dispositivo rallentato, ecc.).
+function renderRestTimerBar(container) {
+  const bar = container.querySelector('#rest-timer-bar');
+  if (!bar) return;
+  clearInterval(restTickInterval);
+
+  const w = store.getActiveWorkout();
+  const restTimer = w && w.restTimer;
+
+  if (restTimer && restTimer.endTime <= Date.now()) {
+    store.clearRestTimer();
+    releaseWakeLock();
+    fireRestTimerCompleteAlert();
+    renderRestTimerBar(container);
+    return;
+  }
+
+  bar.innerHTML = restTimerBarHtml(restTimer);
+
+  if (!restTimer) {
+    releaseWakeLock();
+    const startBtn = bar.querySelector('#rest-timer-start-btn');
+    if (startBtn) {
+      startBtn.addEventListener('click', () => {
+        store.startRestTimer(store.get().restTimerSeconds || 90);
+        requestRestNotificationPermissionIfNeeded();
+        acquireWakeLock();
+        renderRestTimerBar(container);
+      });
+    }
+    return;
+  }
+
+  const cancelBtn = bar.querySelector('#rest-timer-cancel-btn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      store.clearRestTimer();
+      releaseWakeLock();
+      renderRestTimerBar(container);
+    });
+  }
+
+  restTickInterval = setInterval(() => {
+    const active = store.getActiveWorkout();
+    const timer = active && active.restTimer;
+    if (!timer) { clearInterval(restTickInterval); releaseWakeLock(); return; }
+
+    const remainingMs = timer.endTime - Date.now();
+    if (remainingMs <= 0) {
+      clearInterval(restTickInterval);
+      store.clearRestTimer();
+      releaseWakeLock();
+      fireRestTimerCompleteAlert();
+      renderRestTimerBar(container);
+      return;
+    }
+
+    const remainingSec = Math.ceil(remainingMs / 1000);
+    const timeEl = bar.querySelector('#rest-timer-time');
+    const fillEl = bar.querySelector('#rest-timer-progress-fill');
+    if (timeEl) timeEl.textContent = formatRestTime(remainingSec);
+    if (fillEl) {
+      const total = store.get().restTimerSeconds || 90;
+      fillEl.style.width = `${Math.max(0, Math.min(100, (remainingSec / total) * 100))}%`;
+    }
+  }, 250);
+}
+
+// Il wake lock viene rilasciato dal browser quando la scheda va in
+// background: quando torna visibile, lo riprendiamo e ri-sincronizziamo
+// subito la barra (utile anche se il timer e' scaduto nel frattempo).
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  const w = store.getActiveWorkout();
+  if (w && w.restTimer && currentContainer) {
+    acquireWakeLock();
+    renderRestTimerBar(currentContainer);
+  }
+});
 
 function startTicking() {
   clearInterval(tickInterval);
@@ -240,6 +429,7 @@ function renderActive(container) {
         <button class="btn btn-danger btn-sm" id="finish-workout-btn">${icon('flag')} Termina</button>
       </div>
     </div>
+    <div class="rest-timer-bar glass" id="rest-timer-bar"></div>
     <div class="flex items-center justify-between">
       <p class="section-subtitle" style="margin:0">Allenamento di <strong>${escapeHtml(w.weekday)}</strong></p>
       <button class="chip" id="cancel-workout-btn" style="color:var(--danger)">Annulla</button>
@@ -255,6 +445,8 @@ function renderActive(container) {
   }
 
   if (w.running) startTicking();
+  markExistingRecords(container);
+  renderRestTimerBar(container);
 
   container.querySelector('#stopwatch-toggle').addEventListener('click', () => {
     const active = store.getActiveWorkout();
@@ -274,6 +466,8 @@ function renderActive(container) {
       confirmLabel: 'Annulla allenamento',
       onConfirm: () => {
         clearInterval(tickInterval);
+        clearInterval(restTickInterval);
+        releaseWakeLock();
         store.discardActiveWorkout();
         showToast('Allenamento annullato');
         render(container);
@@ -293,6 +487,8 @@ function renderActive(container) {
       danger: false,
       onConfirm: () => {
         clearInterval(tickInterval);
+        clearInterval(restTickInterval);
+        releaseWakeLock();
         justFinished = store.finishActiveWorkout();
         showToast('Allenamento salvato');
         render(container);
@@ -351,7 +547,18 @@ function renderActive(container) {
       const parsed = raw === '' ? null : parseFloat(raw);
       const value = parsed === null || Number.isNaN(parsed) ? null : parsed;
       input.value = value ?? '';
-      store.updateActiveWorkoutSet(input.dataset.entry, Number(input.dataset.index), { [input.dataset.setField]: value });
+      const entryId = input.dataset.entry;
+      const setIndex = Number(input.dataset.index);
+      store.updateActiveWorkoutSet(entryId, setIndex, { [input.dataset.setField]: value });
+
+      const entry = store.getActiveWorkout().exercises.find((e) => e.id === entryId);
+      const row = input.closest('.set-row');
+      const wasPr = row.classList.contains('is-pr');
+      const isPr = evaluateSetRecord(entry, setIndex, row);
+      if (isPr && !wasPr) {
+        const set = entry.sets[setIndex];
+        showToast(`🏆 Nuovo record! ${entry.name} — ${set.reps} reps × ${set.weight} kg`, { variant: 'record' });
+      }
     });
   });
 }
