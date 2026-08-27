@@ -36,6 +36,18 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "5557", "--directory", "C:/Users/minni/Documents/MYMONEY_STARTUP_PWA"],
       "port": 5557
+    },
+    {
+      "name": "piccioni-dev",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8901", "--directory", "C:/Users/minni/Documents/Piccioni_Airlines_Yari"],
+      "port": 8901
+    },
+    {
+      "name": "krimpaf-dev",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8902", "--directory", "C:/Users/minni/Documents/KRIMPAF_STARTUP_PWA"],
+      "port": 8902
     }
   ]
 }
