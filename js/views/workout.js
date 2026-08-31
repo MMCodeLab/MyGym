@@ -106,33 +106,105 @@ function fireRestTimerCompleteAlert() {
   showToast('⏱️ Tempo di recupero finito!');
 }
 
-function restTimerBarHtml(restTimer) {
-  if (!restTimer) {
-    return `<button class="btn btn-glass btn-block rest-timer-start-btn" id="rest-timer-start-btn">${icon('stopwatch')} Tempo di recupero</button>`;
-  }
-  const remainingSec = Math.ceil((restTimer.endTime - Date.now()) / 1000);
+function restProgressPct(remainingSec) {
   const total = store.get().restTimerSeconds || 90;
-  const pct = Math.max(0, Math.min(100, (remainingSec / total) * 100));
+  return Math.max(0, Math.min(100, (remainingSec / total) * 100));
+}
+
+// Forma estesa: il rettangolo che si apre sotto il cronometro dell'allenamento
+// quando si e' in cima alla pagina.
+function restTimerBarHtml(restTimer) {
+  const remainingSec = Math.ceil((restTimer.endTime - Date.now()) / 1000);
   return `
     <div class="rest-timer-running">
-      <div class="rest-timer-progress-fill" id="rest-timer-progress-fill" style="width:${pct}%"></div>
+      <div class="rest-timer-progress-fill" id="rest-timer-progress-fill" style="width:${restProgressPct(remainingSec)}%"></div>
+      <span class="rest-timer-icon">${icon('stopwatch')}</span>
       <div class="rest-timer-info">
         <span class="rest-timer-time" id="rest-timer-time">${formatRestTime(remainingSec)}</span>
         <span class="rest-timer-label">Recupero in corso…</span>
       </div>
-      <button class="icon-btn" id="rest-timer-cancel-btn" aria-label="Annulla recupero">${icon('close')}</button>
+      <button class="icon-btn icon-btn-sm" id="rest-timer-cancel-btn" aria-label="Annulla recupero">${icon('close')}</button>
     </div>
   `;
 }
 
-// Ridisegna solo la barra del timer di recupero (non tutto lo schermo
-// allenamento), e gestisce il proprio giro di aggiornamento: il tempo
-// rimasto si ricalcola sempre dall'orario assoluto di fine, mai da un
-// contatore che scala, cosi' resta corretto anche se il tick e' arrivato
-// in ritardo (tab in background, dispositivo rallentato, ecc.).
+// Forma compatta: vive dentro la topbar sticky, accanto al tempo
+// dell'allenamento, cosi' il recupero resta visibile anche scorrendo gli
+// esercizi.
+function restTimerMiniHtml(restTimer) {
+  const remainingSec = Math.ceil((restTimer.endTime - Date.now()) / 1000);
+  return `
+    <button class="rest-mini" id="rest-mini-btn" aria-label="Tempo di recupero: torna in cima">
+      <span class="rest-mini-fill" id="rest-mini-fill" style="width:${restProgressPct(remainingSec)}%"></span>
+      <span class="rest-mini-icon">${icon('stopwatch')}</span>
+      <span class="rest-mini-time" id="rest-mini-time">${formatRestTime(remainingSec)}</span>
+    </button>
+  `;
+}
+
+let restCompact = false; // forma corrente del timer: chip nella topbar o barra estesa
+let restScrollRaf = null;
+
+// La forma compatta subentra quando la barra estesa finirebbe sotto la topbar
+// sticky. La soglia si calcola sulle posizioni statiche (offsetTop), non sui
+// rect correnti: la barra resta nel flusso e sfuma senza collassare, cosi' il
+// passaggio tra le due forme non sposta mai il contenuto sotto.
+function updateRestCompact(container) {
+  const bar = container.querySelector('#rest-timer-bar');
+  const topbar = container.querySelector('#workout-topbar');
+  if (!bar || !topbar) return;
+
+  if (!bar.classList.contains('is-active')) {
+    bar.classList.remove('is-collapsed');
+    topbar.classList.remove('has-rest-mini');
+    return;
+  }
+
+  const stickyTop = parseFloat(topbar.style.top) || 0;
+  // Si passa al chip quando la barra e' scivolata sotto la topbar per la maggior
+  // parte: cosi' lo spazio che lascia libero sfumando resta minimo.
+  const triggerY = Math.max(0, bar.offsetTop + bar.offsetHeight * 0.6 - topbar.offsetHeight - stickyTop);
+  const compact = window.scrollY > triggerY;
+  bar.classList.toggle('is-collapsed', compact);
+  topbar.classList.toggle('has-rest-mini', compact);
+
+  // L'animazione d'ingresso del chip parte solo al passaggio esteso -> compatto:
+  // renderActive ricrea la topbar a ogni modifica (serie, muscoli, pausa...) e
+  // senza questo flag il chip "rimbalzerebbe" a ogni ridisegno.
+  if (compact && !restCompact) {
+    const mini = topbar.querySelector('.rest-mini');
+    if (mini) mini.classList.add('is-entering');
+  }
+  restCompact = compact;
+}
+
+function onRestScroll() {
+  if (restScrollRaf) return;
+  restScrollRaf = requestAnimationFrame(() => {
+    restScrollRaf = null;
+    if (currentContainer) updateRestCompact(currentContainer);
+  });
+}
+window.addEventListener('scroll', onRestScroll, { passive: true });
+window.addEventListener('resize', onRestScroll);
+
+function startRestTimer(container) {
+  store.startRestTimer(store.get().restTimerSeconds || 90);
+  requestRestNotificationPermissionIfNeeded();
+  acquireWakeLock();
+  renderRestTimerBar(container);
+}
+
+// Ridisegna il timer di recupero nelle sue due forme (senza toccare il resto
+// dello schermo allenamento) e gestisce il proprio giro di aggiornamento: il
+// tempo rimasto si ricalcola sempre dall'orario assoluto di fine, mai da un
+// contatore che scala, cosi' resta corretto anche se il tick e' arrivato in
+// ritardo (tab in background, dispositivo rallentato, ecc.).
 function renderRestTimerBar(container) {
   const bar = container.querySelector('#rest-timer-bar');
-  if (!bar) return;
+  const miniSlot = container.querySelector('#rest-mini-slot');
+  const circleBtn = container.querySelector('#rest-timer-circle-btn');
+  if (!bar || !miniSlot) return;
   clearInterval(restTickInterval);
 
   const w = store.getActiveWorkout();
@@ -146,30 +218,33 @@ function renderRestTimerBar(container) {
     return;
   }
 
-  bar.innerHTML = restTimerBarHtml(restTimer);
-
   if (!restTimer) {
     releaseWakeLock();
-    const startBtn = bar.querySelector('#rest-timer-start-btn');
-    if (startBtn) {
-      startBtn.addEventListener('click', () => {
-        store.startRestTimer(store.get().restTimerSeconds || 90);
-        requestRestNotificationPermissionIfNeeded();
-        acquireWakeLock();
-        renderRestTimerBar(container);
-      });
-    }
+    bar.innerHTML = '';
+    miniSlot.innerHTML = '';
+    bar.classList.remove('is-active');
+    if (circleBtn) circleBtn.classList.remove('is-running');
+    updateRestCompact(container);
     return;
   }
 
-  const cancelBtn = bar.querySelector('#rest-timer-cancel-btn');
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', () => {
-      store.clearRestTimer();
-      releaseWakeLock();
-      renderRestTimerBar(container);
-    });
-  }
+  bar.innerHTML = restTimerBarHtml(restTimer);
+  miniSlot.innerHTML = restTimerMiniHtml(restTimer);
+  bar.classList.add('is-active');
+  if (circleBtn) circleBtn.classList.add('is-running');
+  updateRestCompact(container);
+
+  bar.querySelector('#rest-timer-cancel-btn').addEventListener('click', () => {
+    store.clearRestTimer();
+    releaseWakeLock();
+    renderRestTimerBar(container);
+  });
+
+  // Dal chip compatto si torna in cima, dove c'e' la barra estesa con
+  // l'annulla: il chip da solo e' troppo piccolo per un tasto distruttivo.
+  miniSlot.querySelector('#rest-mini-btn').addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
   restTickInterval = setInterval(() => {
     const active = store.getActiveWorkout();
@@ -187,13 +262,16 @@ function renderRestTimerBar(container) {
     }
 
     const remainingSec = Math.ceil(remainingMs / 1000);
+    const label = formatRestTime(remainingSec);
+    const pct = `${restProgressPct(remainingSec)}%`;
     const timeEl = bar.querySelector('#rest-timer-time');
     const fillEl = bar.querySelector('#rest-timer-progress-fill');
-    if (timeEl) timeEl.textContent = formatRestTime(remainingSec);
-    if (fillEl) {
-      const total = store.get().restTimerSeconds || 90;
-      fillEl.style.width = `${Math.max(0, Math.min(100, (remainingSec / total) * 100))}%`;
-    }
+    const miniTimeEl = miniSlot.querySelector('#rest-mini-time');
+    const miniFillEl = miniSlot.querySelector('#rest-mini-fill');
+    if (timeEl) timeEl.textContent = label;
+    if (fillEl) fillEl.style.width = pct;
+    if (miniTimeEl) miniTimeEl.textContent = label;
+    if (miniFillEl) miniFillEl.style.width = pct;
   }, 250);
 }
 
@@ -420,13 +498,17 @@ function renderActive(container) {
 
   container.innerHTML = `
     <div class="workout-topbar glass" id="workout-topbar">
-      <div class="stopwatch">
-        <span class="stopwatch-icon">${icon('stopwatch')}</span>
-        <span class="stopwatch-time" id="stopwatch-time">${formatElapsed(currentElapsedMs(w))}</span>
+      <div class="workout-topbar-left">
+        <div class="stopwatch">
+          <span class="stopwatch-icon">${icon('stopwatch')}</span>
+          <span class="stopwatch-time" id="stopwatch-time">${formatElapsed(currentElapsedMs(w))}</span>
+        </div>
+        <div class="rest-mini-slot" id="rest-mini-slot"></div>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="workout-topbar-actions">
+        <button class="icon-btn rest-circle-btn" id="rest-timer-circle-btn" aria-label="Avvia tempo di recupero" title="Tempo di recupero">${icon('stopwatch')}</button>
         <button class="icon-btn" id="stopwatch-toggle" aria-label="${w.running ? 'Pausa' : 'Riprendi'}">${icon(w.running ? 'pause' : 'play')}</button>
-        <button class="btn btn-danger btn-sm" id="finish-workout-btn">${icon('flag')} Termina</button>
+        <button class="btn btn-danger btn-sm" id="finish-workout-btn" aria-label="Termina l'allenamento">${icon('flag')}<span class="btn-label">Termina</span></button>
       </div>
     </div>
     <div class="rest-timer-bar glass" id="rest-timer-bar"></div>
@@ -447,6 +529,8 @@ function renderActive(container) {
   if (w.running) startTicking();
   markExistingRecords(container);
   renderRestTimerBar(container);
+
+  container.querySelector('#rest-timer-circle-btn').addEventListener('click', () => startRestTimer(container));
 
   container.querySelector('#stopwatch-toggle').addEventListener('click', () => {
     const active = store.getActiveWorkout();

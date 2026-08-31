@@ -144,7 +144,7 @@ function render(container) {
       <div class="settings-row glass">
         <div class="settings-row-text">
           <div class="settings-row-title">Durata predefinita</div>
-          <div class="settings-row-desc">Usata dal tasto "Tempo di recupero" durante l'allenamento.</div>
+          <div class="settings-row-desc">Usata dal pulsante col cronometro nella barra dell'allenamento.</div>
         </div>
       </div>
       <div class="chip-row" id="rest-duration-chips">
