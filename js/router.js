@@ -94,7 +94,18 @@ function positionNavPill(nav) {
   pill.style.width = `${active.offsetWidth}px`;
   pill.style.height = `${active.offsetHeight}px`;
   pill.style.transform = `translateX(${active.offsetLeft}px)`;
-  active.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+
+  // La voce attiva si porta in vista scorrendo SOLO la barra. Con
+  // scrollIntoView (block: 'nearest') il browser puo' scorrere anche la
+  // pagina: all'apertura su iPhone, mentre il viewport si assesta, la barra
+  // fixed puo' risultare per un istante fuori dal viewport e quello scroll
+  // partiva davvero, facendo sobbalzare la parte bassa.
+  // Scorrimento immediato e non animato: 'smooth' su questo elemento viene
+  // ignorato in alcuni motori (lo scroll resta a zero e la voce attiva
+  // rimane tagliata), e comunque a muoversi qui e' solo la barra.
+  const target = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+  const maxLeft = Math.max(0, nav.scrollWidth - nav.clientWidth);
+  nav.scrollLeft = Math.min(Math.max(0, target), maxLeft);
 }
 
 function updateNavActive(routeKey) {
