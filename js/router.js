@@ -5,6 +5,8 @@
 
 const { store } = window.MyGym;
 
+const WORKOUT_ROUTE = '#/allenamento';
+
 // Scroll da ripristinare al primo render dopo l'avvio: fuori da quel momento
 // resta null e ogni navigazione riparte dall'alto, come sempre.
 let pendingScrollY = null;
@@ -18,8 +20,12 @@ function currentRoute() {
   return location.hash && location.hash !== '#' ? location.hash : '#/';
 }
 
+// Si tiene traccia solo della schermata dell'allenamento: e' l'unica che viene
+// ripristinata, e restando l'ultima salvata la si ritrova anche se si e' fatto
+// un giro in un'altra sezione prima che il telefono chiudesse l'app.
 function saveCurrentPosition() {
-  store.setLastPosition({ route: currentRoute(), scrollY: Math.round(window.scrollY) });
+  if (currentRoute() !== WORKOUT_ROUTE) return;
+  store.setLastPosition({ route: WORKOUT_ROUTE, scrollY: Math.round(window.scrollY) });
 }
 
 // Lo scroll salvato serve solo al prossimo avvio: basta scriverlo ogni tanto
@@ -54,25 +60,27 @@ function restoreScroll(y) {
   }, 400);
 }
 
-// All'avvio riapre l'app dov'era: stessa sezione e stesso punto della pagina.
-// Solo se si parte dall'ingresso normale (la PWA installata apre sempre lo
+// A freddo l'app riparte dalla schermata iniziale, come qualsiasi altra volta.
+// L'unica eccezione e' l'allenamento in corso: li' si torna dov'eri, cosi' non
+// devi ricercare l'esercizio che stavi compilando.
+// Vale solo partendo dall'ingresso normale (la PWA installata apre sempre lo
 // start_url, senza hash): un link diretto a una schermata precisa vince.
 function restoreLastPosition() {
   if (location.hash && location.hash !== '#' && location.hash !== '#/') return;
-  const last = store.getLastPosition();
-  if (!last) return;
+  if (!store.getActiveWorkout()) return;
 
-  pendingScrollY = last.scrollY || 0;
-  const target = last.route || '#/';
-  if (target === currentRoute()) return;
+  const last = store.getLastPosition();
+  if (last && last.route === WORKOUT_ROUTE) pendingScrollY = last.scrollY || 0;
+
   try {
     // replaceState e non location.hash: non lascia una voce di cronologia in
     // piu', altrimenti il "indietro" del telefono resterebbe intrappolato
     // sulla schermata d'ingresso.
-    history.replaceState(null, '', target);
+    history.replaceState(null, '', WORKOUT_ROUTE);
   } catch (e) {
     // aperta come file locale (file://) alcuni browser bloccano replaceState:
     // il ripristino della sezione salta, quello dello scroll no
+    pendingScrollY = null;
   }
 }
 
@@ -152,6 +160,11 @@ function navigate(hash) {
 }
 
 function initRouter() {
+  // La posizione la decide l'app (vedi restoreLastPosition): senza questo, al
+  // reload il browser rimetterebbe da solo lo scroll di prima, sovrapponendosi
+  // alla regola "a freddo si riparte dalla schermata iniziale".
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
   window.addEventListener('hashchange', route);
   window.addEventListener('resize', () => positionNavPill(document.getElementById('bottom-nav')));
 

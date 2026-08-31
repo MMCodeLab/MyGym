@@ -233,6 +233,9 @@ const store = {
     };
     state.activeWorkout = workout;
     save();
+    // La posizione salvata era di un altro allenamento: questo comincia
+    // dall'alto.
+    clearUiPosition();
     return workout;
   },
   updateActiveWorkout(patch) {
@@ -289,6 +292,7 @@ const store = {
   discardActiveWorkout() {
     state.activeWorkout = null;
     save();
+    clearUiPosition();
   },
 
   // ---- Record personali ----
@@ -343,6 +347,7 @@ const store = {
     state.workouts.push(record);
     state.activeWorkout = null;
     save();
+    clearUiPosition();
     return record;
   },
   getWorkouts() {
