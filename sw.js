@@ -17,6 +17,7 @@ const SHELL_ASSETS = [
   'js/views/exercises.js',
   'js/views/workout.js',
   'js/views/workout-history.js',
+  'js/views/progress.js',
   'js/views/personal-trainer.js',
   'js/views/settings.js',
   'icons/icon-192.png',

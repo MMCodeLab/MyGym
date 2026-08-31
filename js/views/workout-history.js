@@ -197,7 +197,7 @@ function render(container) {
         <div class="empty-text">Vai su "Allenamento" nella barra in basso per registrare il primo.</div>
       </div>
     `;
-    container.querySelector('#back-btn').addEventListener('click', () => navigate('#/impostazioni'));
+    container.querySelector('#back-btn').addEventListener('click', () => navigate('#/progressi'));
     return;
   }
 
@@ -225,7 +225,7 @@ function render(container) {
     </div>
   `;
 
-  container.querySelector('#back-btn').addEventListener('click', () => navigate('#/impostazioni'));
+  container.querySelector('#back-btn').addEventListener('click', () => navigate('#/progressi'));
 
   container.querySelectorAll('[data-workout-id]').forEach((card) => {
     card.addEventListener('click', (e) => {

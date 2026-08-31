@@ -124,8 +124,12 @@ function route() {
   } else if (parts[0] === 'allenamento') {
     routeKey = 'allenamento';
     renderFn = views.workout.render;
+  } else if (parts[0] === 'progressi') {
+    routeKey = 'progressi';
+    renderFn = views.progress.render;
   } else if (parts[0] === 'storico') {
-    routeKey = 'impostazioni';
+    // Lo storico e' il dettaglio di "Progressi": la voce evidenziata resta quella.
+    routeKey = 'progressi';
     renderFn = views.workoutHistory.render;
   } else if (parts[0] === 'esercizi') {
     routeKey = 'esercizi';
