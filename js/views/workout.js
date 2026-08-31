@@ -634,10 +634,21 @@ function renderActive(container) {
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
   });
 
+  // Il cestino sta a pochi millimetri dai campi che si compilano durante la
+  // serie: senza conferma un tocco storto cancella il lavoro appena segnato.
   container.querySelectorAll('[data-remove-exercise]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      store.removeActiveWorkoutExercise(btn.dataset.removeExercise);
-      renderActive(container);
+      const entry = store.getActiveWorkout().exercises.find((e) => e.id === btn.dataset.removeExercise);
+      if (!entry) return;
+      confirmAction({
+        title: 'Rimuovere l\'esercizio?',
+        message: `"${entry.name}" e le serie che hai segnato verranno tolti da questo allenamento.`,
+        confirmLabel: 'Rimuovi',
+        onConfirm: () => {
+          store.removeActiveWorkoutExercise(entry.id);
+          renderActive(container);
+        },
+      });
     });
   });
 
@@ -663,8 +674,21 @@ function renderActive(container) {
 
   container.querySelectorAll('[data-remove-set]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      store.removeActiveWorkoutSet(btn.dataset.entry, Number(btn.dataset.index));
-      renderActive(container);
+      const entryId = btn.dataset.entry;
+      const index = Number(btn.dataset.index);
+      const entry = store.getActiveWorkout().exercises.find((e) => e.id === entryId);
+      const set = entry && entry.sets[index];
+      if (!set) return;
+      const done = set.reps && set.weight ? ` (${set.reps} reps × ${set.weight} kg)` : '';
+      confirmAction({
+        title: 'Rimuovere la serie?',
+        message: `La serie ${index + 1}${done} di "${entry.name}" verrà tolta da questo allenamento.`,
+        confirmLabel: 'Rimuovi',
+        onConfirm: () => {
+          store.removeActiveWorkoutSet(entryId, index);
+          renderActive(container);
+        },
+      });
     });
   });
 

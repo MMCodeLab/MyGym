@@ -316,6 +316,65 @@ const store = {
   },
   // Ritorna null se non c'e' ancora abbastanza storico per un confronto
   // (niente peso/reps, oppure prima volta in assoluto per questo esercizio).
+  // Tutti i record personali ricostruiti dallo storico: per ogni esercizio la
+  // serie migliore di sempre e la sequenza delle volte in cui il record e'
+  // stato battuto. Si ricalcola al volo invece di essere salvata, cosi' resta
+  // coerente anche se un allenamento viene cancellato dallo storico.
+  getPersonalRecords() {
+    const byKey = new Map();
+
+    [...state.workouts]
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach((w) => {
+        // Prima la serie migliore per esercizio dentro questo allenamento: lo
+        // storico registra un solo orario per allenamento, quindi due record
+        // nella stessa sessione avrebbero data e ora identiche. Conta il
+        // migliore, cioe' quello con cui il record e' rimasto.
+        const bestOfWorkout = new Map();
+        w.exercises.forEach((e) => {
+          const key = recordKey(e.exerciseId, e.name);
+          let acc = bestOfWorkout.get(key);
+          if (!acc) {
+            acc = { key, exerciseId: e.exerciseId || null, name: e.name, best: null };
+            bestOfWorkout.set(key, acc);
+          }
+          acc.name = e.name;
+          e.sets.forEach((set) => {
+            const oneRM = estimated1RM(set.weight, set.reps);
+            if (!oneRM) return;
+            if (!acc.best || oneRM > acc.best.oneRM) {
+              acc.best = { weight: set.weight, reps: set.reps, oneRM };
+            }
+          });
+        });
+
+        bestOfWorkout.forEach((acc, key) => {
+          let entry = byKey.get(key);
+          if (!entry) {
+            entry = { key, exerciseId: acc.exerciseId, name: acc.name, history: [] };
+            byKey.set(key, entry);
+          }
+          entry.name = acc.name; // il nome piu' recente e' quello che l'utente riconosce
+          if (!acc.best) return;
+
+          const previous = entry.history[entry.history.length - 1];
+          if (previous && acc.best.oneRM <= previous.oneRM) return;
+          entry.history.push({
+            date: w.date,
+            workoutId: w.id,
+            weekday: w.weekday,
+            weight: acc.best.weight,
+            reps: acc.best.reps,
+            oneRM: acc.best.oneRM,
+          });
+        });
+      });
+
+    return [...byKey.values()]
+      .filter((entry) => entry.history.length)
+      .map((entry) => ({ ...entry, best: entry.history[entry.history.length - 1] }))
+      .sort((a, b) => new Date(b.best.date) - new Date(a.best.date));
+  },
   checkPersonalRecord({ exerciseId, name, weight, reps }) {
     const oneRM = estimated1RM(weight, reps);
     if (!oneRM) return null;

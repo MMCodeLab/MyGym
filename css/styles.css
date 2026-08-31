@@ -723,6 +723,144 @@ a { color: inherit; text-decoration: none; }
 .settings-row-lg-icon svg { width: 24px; height: 24px; }
 .settings-row-lg-chevron { width: 20px; height: 20px; color: var(--text-tertiary); flex-shrink: 0; transform: rotate(-90deg); }
 
+/* ---------- Scorciatoia "Allenamenti" (impostazioni) ---------- */
+/* E' la porta d'ingresso a storico e grafico: deve staccarsi dalle righe
+   normali, quindi bordo a gradiente, alone colorato e due numeri in evidenza. */
+.stats-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 16px;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  border-radius: var(--radius-lg);
+  /* Vetro come le altre righe, ma con una velatura dei colori d'accento sopra:
+     si stacca dal resto senza sacrificare la leggibilita' del testo. */
+  background:
+    linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(6, 182, 212, 0.14)),
+    var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.28);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .25s var(--ease-spring), box-shadow .3s var(--ease-out);
+}
+.stats-hero:active { transform: scale(0.985); }
+.stats-hero::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -70%;
+  right: -15%;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.35), transparent 70%);
+  pointer-events: none;
+}
+.stats-hero-icon {
+  width: 50px; height: 50px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--accent-gradient);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 22px rgba(139, 92, 246, 0.45);
+}
+.stats-hero-icon svg { width: 26px; height: 26px; }
+.stats-hero-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.stats-hero-title { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; }
+.stats-hero-desc { font-size: 0.78rem; color: var(--text-secondary); }
+.stats-hero-metrics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.stats-hero-metrics span {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  padding: 3px 9px;
+}
+.stats-hero-metrics strong { color: var(--text-primary); font-weight: 800; }
+.stats-hero-chevron { width: 20px; height: 20px; color: var(--text-tertiary); flex-shrink: 0; transform: rotate(-90deg); }
+
+/* ---------- I tuoi record (impostazioni) ---------- */
+.settings-section-hint { font-size: 0.78rem; color: var(--text-secondary); margin: -4px 0 10px; }
+.record-card { border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 10px; }
+.record-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.record-medal {
+  width: 34px; height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--gold), #f97316);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(244, 183, 64, 0.32);
+}
+.record-medal svg { width: 18px; height: 18px; }
+.record-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.record-name { font-weight: 700; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.record-sub { font-size: 0.72rem; color: var(--text-secondary); }
+.record-best {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.record-best small { font-size: 0.68rem; font-weight: 700; color: var(--text-secondary); margin-left: 1px; }
+.record-chevron {
+  width: 18px; height: 18px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: transform .25s var(--ease-out);
+}
+.record-card.is-open .record-chevron { transform: rotate(180deg); }
+.record-history { display: none; padding: 6px 14px 10px; border-top: 1px solid var(--glass-border); }
+.record-card.is-open .record-history { display: block; }
+.record-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--glass-border);
+}
+.record-history-row:last-child { border-bottom: none; }
+.record-history-when { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.record-history-date { font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
+.record-history-time { font-size: 0.7rem; color: var(--text-tertiary); }
+.record-now {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  border: 1px solid rgba(244, 183, 64, 0.45);
+  background: rgba(244, 183, 64, 0.14);
+  border-radius: var(--radius-pill);
+  padding: 1px 6px;
+}
+.record-history-load { font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+.record-history-row.is-current .record-history-load { color: var(--gold); }
+
 /* ---------- Weekday picker (inizia allenamento) ---------- */
 .weekday-grid {
   display: flex;

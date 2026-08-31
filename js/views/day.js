@@ -205,9 +205,18 @@ function render(container, dayId) {
 
   container.querySelectorAll('[data-remove-entry]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      store.removeExerciseFromDay(day.id, btn.dataset.removeEntry);
-      showToast('Esercizio rimosso dal giorno');
-      render(container, dayId);
+      const exerciseId = btn.dataset.removeEntry;
+      const ex = store.getExercise(exerciseId);
+      confirmAction({
+        title: 'Rimuovere dal giorno?',
+        message: `"${ex ? ex.name : 'Questo esercizio'}" verrà tolto da "${day.name}". Resta nella tua libreria.`,
+        confirmLabel: 'Rimuovi',
+        onConfirm: () => {
+          store.removeExerciseFromDay(day.id, exerciseId);
+          showToast('Esercizio rimosso dal giorno');
+          render(container, dayId);
+        },
+      });
     });
   });
 }

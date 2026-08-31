@@ -1,7 +1,7 @@
 // Script classico (non un modulo ES): espone tutto su window.MyGym.views.settings.
 (function () {
 
-const { store, icon, showToast, confirmAction, navigate, openModal } = window.MyGym;
+const { store, icon, escapeHtml, showToast, confirmAction, navigate, openModal } = window.MyGym;
 
 const FORMSPREE_ENDPOINT = 'https://formspree.io/f/xykgbzya';
 const INSTAGRAM_URL = 'https://www.instagram.com/myproject_pwa?igsi=aTNwM3dpdWw1ZjU%3D&utm_source=qr';
@@ -93,6 +93,115 @@ const REST_NOTIF_COPY = {
   default: { title: 'Da attivare', desc: 'Tocca per attivarle: ti avvisano anche se sei uscito dall\'app mentre il timer è in corso.' },
 };
 
+// ---------- Scorciatoia agli allenamenti + record personali ----------
+
+function formatKg(value) {
+  return Number(value || 0).toLocaleString('it-IT', { maximumFractionDigits: 1 });
+}
+
+// L'anno si mostra solo se il record non e' di quest'anno: nelle righe strette
+// dello storico ogni parola in meno conta.
+function formatRecordDate(iso) {
+  const d = new Date(iso);
+  const opts = { day: '2-digit', month: 'short' };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+  return d.toLocaleDateString('it-IT', opts);
+}
+
+function formatRecordTime(iso) {
+  return new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+function totalVolume(workouts) {
+  return workouts.reduce((sum, w) => sum + w.exercises.reduce((s, e) => (
+    s + e.sets.reduce((x, set) => x + (set.reps || 0) * (set.weight || 0), 0)
+  ), 0), 0);
+}
+
+function statsHeroHtml() {
+  const { workouts } = store.get();
+  const metrics = workouts.length
+    ? `
+      <span class="stats-hero-metrics">
+        <span><strong>${workouts.length}</strong> allenament${workouts.length === 1 ? 'o' : 'i'}</span>
+        <span><strong>${formatKg(Math.round(totalVolume(workouts)))}</strong> kg sollevati</span>
+      </span>`
+    : '';
+
+  return `
+    <button class="stats-hero" id="workouts-row">
+      <span class="stats-hero-icon">${icon('chartBar')}</span>
+      <span class="stats-hero-text">
+        <span class="stats-hero-title">Allenamenti</span>
+        <span class="stats-hero-desc">${workouts.length ? 'Storico completo e grafico dei progressi' : 'Qui compariranno storico e grafico dei progressi'}</span>
+        ${metrics}
+      </span>
+      <span class="stats-hero-chevron">${icon('chevronDown')}</span>
+    </button>
+  `;
+}
+
+function recordHistoryRowHtml(item, isCurrent) {
+  return `
+    <div class="record-history-row${isCurrent ? ' is-current' : ''}">
+      <span class="record-history-when">
+        <span class="record-history-date">${formatRecordDate(item.date)}${isCurrent ? '<span class="record-now">attuale</span>' : ''}</span>
+        <span class="record-history-time">ore ${formatRecordTime(item.date)}</span>
+      </span>
+      <span class="record-history-load">${formatKg(item.weight)} kg × ${item.reps}</span>
+    </div>
+  `;
+}
+
+function recordCardHtml(record, index) {
+  const beaten = record.history.length - 1;
+  const sub = beaten
+    ? `Battuto ${beaten} volt${beaten === 1 ? 'a' : 'e'} · ${formatRecordDate(record.best.date)}`
+    : `Primo record · ${formatRecordDate(record.best.date)}`;
+  // Dal piu' recente al piu' vecchio: il record attuale sta in cima.
+  const rows = [...record.history].reverse()
+    .map((item, i) => recordHistoryRowHtml(item, i === 0))
+    .join('');
+
+  return `
+    <div class="record-card glass" data-record="${index}">
+      <button class="record-head" data-record-toggle="${index}" aria-expanded="false">
+        <span class="record-medal">${icon('sparkles')}</span>
+        <span class="record-info">
+          <span class="record-name">${escapeHtml(record.name)}</span>
+          <span class="record-sub">${sub}</span>
+        </span>
+        <span class="record-best">${formatKg(record.best.weight)}<small>kg</small> × ${record.best.reps}</span>
+        <span class="record-chevron">${icon('chevronDown')}</span>
+      </button>
+      <div class="record-history">${rows}</div>
+    </div>
+  `;
+}
+
+function recordsSectionHtml() {
+  const records = store.getPersonalRecords();
+
+  const body = records.length
+    ? records.map(recordCardHtml).join('')
+    : `
+      <div class="settings-row glass">
+        <div class="settings-row-text">
+          <div class="settings-row-title">Ancora nessun record</div>
+          <div class="settings-row-desc">Segna reps e carico durante l'allenamento: qui trovi il massimo di ogni esercizio e tutte le volte che l'hai battuto.</div>
+        </div>
+      </div>
+    `;
+
+  return `
+    <div class="settings-section">
+      <h3>I tuoi record</h3>
+      ${records.length ? '<p class="settings-section-hint">Tocca un esercizio per vedere quando hai battuto il record.</p>' : ''}
+      ${body}
+    </div>
+  `;
+}
+
 function download(filename, text) {
   const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -114,15 +223,10 @@ function render(container) {
     <p class="section-subtitle">Personalizza l'app.</p>
 
     <div class="settings-section">
-      <div class="settings-row settings-row-lg glass" id="workouts-row">
-        <span class="settings-row-lg-icon">${icon('chartBar')}</span>
-        <div class="settings-row-text">
-          <div class="settings-row-title">Allenamenti</div>
-          <div class="settings-row-desc">Storico completo e grafico dei progressi.</div>
-        </div>
-        <span class="settings-row-lg-chevron">${icon('chevronDown')}</span>
-      </div>
+      ${statsHeroHtml()}
     </div>
+
+    ${recordsSectionHtml()}
 
     <div class="settings-section">
       <h3>Aspetto</h3>
@@ -213,6 +317,14 @@ function render(container) {
   `;
 
   container.querySelector('#workouts-row').addEventListener('click', () => navigate('#/storico'));
+
+  container.querySelectorAll('[data-record-toggle]').forEach((head) => {
+    head.addEventListener('click', () => {
+      const card = head.closest('.record-card');
+      const open = card.classList.toggle('is-open');
+      head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  });
   container.querySelector('#contact-row').addEventListener('click', openContactModal);
 
   const segmented = container.querySelector('#theme-segmented');
