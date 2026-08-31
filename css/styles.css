@@ -134,7 +134,14 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Background blobs ---------- */
 .bg-blobs {
   position: fixed;
-  inset: 0;
+  /* Deborda sotto il bordo dello schermo. All'apertura della PWA iOS riporta
+     per un istante un viewport piu' corto del vero: uno strato fixed alto
+     esattamente quanto il viewport resterebbe corto e sotto la barra si
+     vedrebbe una striscia scura (la base senza il bagliore) finche' non
+     tocchi lo schermo. Essendo solo decorativo puo' debordare: le posizioni
+     delle macchie sono espresse rispetto al viewport, non a questo box, cosi'
+     restano dove sono. */
+  inset: 0 0 -25vh 0;
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
@@ -157,13 +164,16 @@ a { color: inherit; text-decoration: none; }
 }
 .blob-b {
   width: 55vmax; height: 55vmax;
-  bottom: -25vmax; right: -20vmax;
+  /* 25vh compensano l'allungamento di .bg-blobs: la macchia resta ancorata al
+     bordo vero dello schermo. */
+  bottom: calc(25vh - 25vmax); right: -20vmax;
   background: var(--bg-blob-b);
   animation: float-b 26s ease-in-out infinite;
 }
 .blob-c {
   width: 40vmax; height: 40vmax;
-  top: 35%; left: 50%;
+  /* vh e non %: la percentuale seguirebbe l'altezza (ora maggiore) del box. */
+  top: 35vh; left: 50%;
   background: var(--bg-blob-c);
   animation: float-c 30s ease-in-out infinite;
 }
