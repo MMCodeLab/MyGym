@@ -5,6 +5,10 @@
 (function () {
 
 const STORAGE_KEY = 'mygym.data.v1';
+// Ultima posizione nell'app (rotta + scroll), tenuta in una chiave separata:
+// si riscrive di continuo mentre si scorre e non ha senso che finisca nei
+// backup di exportData(), che contengono i dati veri dell'utente.
+const UI_KEY = 'mygym.ui.v1';
 
 const MUSCLE_GROUPS = [
   { key: 'petto', label: 'Petto', color: 'var(--mg-petto)' },
@@ -80,6 +84,14 @@ function save() {
     console.warn('Impossibile salvare i dati (storage pieno?).', e);
   }
   listeners.forEach((fn) => fn(state));
+}
+
+function clearUiPosition() {
+  try {
+    localStorage.removeItem(UI_KEY);
+  } catch (e) {
+    // niente da fare: al massimo l'app si riapre su una schermata vuota
+  }
 }
 
 function applyTheme() {
@@ -344,6 +356,24 @@ const store = {
     save();
   },
 
+  // ---- Ultima posizione nell'app (per riaprirla dov'era) ----
+  getLastPosition() {
+    try {
+      const raw = localStorage.getItem(UI_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+  setLastPosition(position) {
+    try {
+      localStorage.setItem(UI_KEY, JSON.stringify(position));
+    } catch (e) {
+      // storage pieno o non disponibile: si perde solo il ripristino
+    }
+  },
+  clearLastPosition: clearUiPosition,
+
   // ---- Backup ----
   exportData() {
     return JSON.stringify(state, null, 2);
@@ -353,10 +383,14 @@ const store = {
     state = { ...defaultState(), ...parsed };
     save();
     applyTheme();
+    // I dati sono altri: la vecchia posizione punterebbe a schermate che
+    // potrebbero non esistere piu'.
+    clearUiPosition();
   },
   clearAll() {
     state = defaultState();
     save();
+    clearUiPosition();
   },
 };
 

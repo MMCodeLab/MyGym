@@ -22,6 +22,10 @@ function setAppHeight() {
 // e subito indietro, impercettibile) cosi' l'utente non deve farlo a mano.
 function nudgeViewport() {
   const de = document.documentElement;
+  // La posizione va conservata: questa funzione gira anche al ritorno in
+  // foreground, e riportare in cima significherebbe far ricercare all'utente
+  // l'esercizio che stava compilando.
+  const y = window.scrollY;
   // Se la pagina e' piu' corta del viewport (es. un giorno senza esercizi,
   // vedi screenshot del bug) non c'e' nulla da scorrere: scrollTo sotto
   // sarebbe un no-op e non forzerebbe alcun ricalcolo. Garantiamo sempre un
@@ -29,7 +33,7 @@ function nudgeViewport() {
   // (mai 0) e non clientHeight, che a script appena partito - prima che il
   // layout esista - puo' leggere 0.
   de.style.minHeight = `${window.innerHeight + 40}px`;
-  window.scrollTo(0, 1);
+  window.scrollTo(0, y + 1);
   // setTimeout invece di requestAnimationFrame: rAF puo' non scattare mai se
   // la scheda non e' visibile/in primo piano nel momento in cui l'app si
   // apre (es. tornando da un'altra app), lasciando lo scroll bloccato a 1px.
@@ -38,7 +42,7 @@ function nudgeViewport() {
   // "precedente") evita che chiamate ravvicinate si accavallino e lascino un
   // valore intermedio incastrato.
   setTimeout(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo(0, y);
     de.style.minHeight = '';
   }, 16);
 }
@@ -46,10 +50,7 @@ function refreshViewport() {
   setAppHeight();
   nudgeViewport();
 }
-refreshViewport();
-requestAnimationFrame(() => requestAnimationFrame(refreshViewport));
-setTimeout(refreshViewport, 50);
-setTimeout(refreshViewport, 300);
+setAppHeight();
 window.addEventListener('resize', setAppHeight);
 window.addEventListener('orientationchange', () => setTimeout(refreshViewport, 200));
 document.addEventListener('visibilitychange', () => {
@@ -62,7 +63,15 @@ document.querySelectorAll('.nav-icon').forEach((el) => {
   el.innerHTML = icon(el.dataset.icon);
 });
 
+// Il router per primo: rende la schermata (ed eventualmente ripristina la
+// posizione salvata) prima che partano le correzioni di altezza del viewport,
+// che da li' in poi si limitano a conservare il punto in cui si e'.
 initRouter();
+
+refreshViewport();
+requestAnimationFrame(() => requestAnimationFrame(refreshViewport));
+setTimeout(refreshViewport, 50);
+setTimeout(refreshViewport, 300);
 
 // Il service worker richiede http/https: se la pagina e' aperta come file
 // locale (file://) semplicemente non si registra, senza errori bloccanti.
