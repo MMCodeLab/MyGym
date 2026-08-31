@@ -10,12 +10,32 @@ applyTheme();
 // Corregge l'altezza reale della shell (vedi --app-vh in css/styles.css):
 // iOS e alcuni Android, all'apertura della PWA o al ritorno in foreground,
 // a volte riportano un'altezza di viewport non ancora aggiornata, lasciando
-// uno spazio vuoto sotto la bottom nav finche' l'utente non scorre. Misuriamo
-// l'altezza vera piu' volte, nei momenti in cui puo' cambiare.
-function setAppHeight() {
-  const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-  document.documentElement.style.setProperty('--app-vh', `${h}px`);
+// uno spazio vuoto sotto la bottom nav finche' l'utente non scorre.
+//
+// La misura pero' arriva a raffica mentre iOS anima l'apertura dell'app.
+// Applicarla ogni volta - e ogni volta forzare il ricalcolo con un
+// micro-scroll - faceva sobbalzare piu' volte la barra in basso e il FAB, che
+// sono fixed e si riposizionano a ogni cambio di viewport: all'apertura si
+// vedeva la parte bassa "vibrare". Quindi due regole: --app-vh si riscrive
+// solo quando l'altezza cambia davvero, e il ricalcolo forzato parte una
+// volta sola, quando la misura ha smesso di muoversi.
+let appliedHeight = 0;
+let nudgedHeight = 0;
+let viewportFixTimer = null;
+
+function viewportHeight() {
+  return Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight);
 }
+
+function setAppHeight() {
+  const h = viewportHeight();
+  // Sotto i 2px sono oscillazioni di misura, non un viewport davvero diverso.
+  if (Math.abs(h - appliedHeight) < 2) return false;
+  appliedHeight = h;
+  document.documentElement.style.setProperty('--app-vh', `${h}px`);
+  return true;
+}
+
 // Su alcuni WebKit (iOS, soprattutto da PWA installata) leggere l'altezza
 // giusta non basta: il motore di rendering ricalcola davvero il layout solo
 // quando arriva un vero evento di scroll. Lo simuliamo noi (spostamento di 1px
@@ -46,17 +66,34 @@ function nudgeViewport() {
     de.style.minHeight = '';
   }, 16);
 }
-function refreshViewport() {
+
+// Ogni nuova misura aggiorna subito l'altezza (che e' gratis) e rimanda il
+// nudge: durante l'animazione di apertura non ne parte nessuno, e ne resta
+// esattamente uno alla fine. Se l'altezza non e' cambiata rispetto all'ultimo
+// nudge non si tocca nulla, cosi' tornare in foreground non fa piu' saltare
+// niente.
+function scheduleViewportFix() {
   setAppHeight();
-  nudgeViewport();
+  clearTimeout(viewportFixTimer);
+  viewportFixTimer = setTimeout(() => {
+    viewportFixTimer = null;
+    if (nudgedHeight === appliedHeight) return;
+    // Con la tastiera aperta il viewport si accorcia di continuo e c'e' un
+    // campo attivo: un micro-scroll darebbe solo fastidio mentre si scrive.
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+    nudgedHeight = appliedHeight;
+    nudgeViewport();
+  }, 150);
 }
+
 setAppHeight();
-window.addEventListener('resize', setAppHeight);
-window.addEventListener('orientationchange', () => setTimeout(refreshViewport, 200));
+window.addEventListener('resize', scheduleViewportFix);
+window.addEventListener('orientationchange', () => setTimeout(scheduleViewportFix, 200));
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) setTimeout(refreshViewport, 100);
+  if (!document.hidden) scheduleViewportFix();
 });
-if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleViewportFix);
 
 // Icone della bottom nav.
 document.querySelectorAll('.nav-icon').forEach((el) => {
@@ -68,10 +105,11 @@ document.querySelectorAll('.nav-icon').forEach((el) => {
 // che da li' in poi si limitano a conservare il punto in cui si e'.
 initRouter();
 
-refreshViewport();
-requestAnimationFrame(() => requestAnimationFrame(refreshViewport));
-setTimeout(refreshViewport, 50);
-setTimeout(refreshViewport, 300);
+// Una misura appena la schermata esiste e una quando iOS ha finito di animare
+// l'apertura: se nel frattempo l'altezza non e' cambiata, la seconda non fa
+// nulla.
+scheduleViewportFix();
+setTimeout(scheduleViewportFix, 400);
 
 // Il service worker richiede http/https: se la pagina e' aperta come file
 // locale (file://) semplicemente non si registra, senza errori bloccanti.
