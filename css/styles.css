@@ -408,6 +408,11 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   gap: var(--space-3);
 }
+/* Esercizio gia' segnato nell'allenamento in corso: resta scegliibile (con una
+   conferma), ma spento, cosi' si vede a colpo d'occhio cosa e' gia' stato fatto. */
+.exercise-card.is-done { opacity: 0.5; }
+.exercise-card.is-done .exercise-thumb,
+.exercise-card.is-done .badge { filter: grayscale(1); }
 .exercise-thumb {
   width: 56px; height: 56px;
   border-radius: var(--radius-sm);
@@ -471,6 +476,13 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--radius-pill);
   color: #fff;
 }
+/* Marchio "gia' fatto" sugli esercizi gia' segnati nell'allenamento in corso:
+   grigio neutro, leggibile sia sul vetro scuro sia su quello chiaro. */
+.badge-done {
+  background: rgba(148, 163, 184, 0.3);
+  color: var(--text-secondary);
+}
+.badge-done svg { width: 12px; height: 12px; }
 
 /* ---------- Forms ---------- */
 .field { margin-bottom: var(--space-4); }

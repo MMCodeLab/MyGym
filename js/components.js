@@ -97,7 +97,7 @@ function showToast(message, { variant } = {}) {
 }
 
 // ---------- Confirm ----------
-function confirmAction({ title, message, confirmLabel = 'Conferma', danger = true, onConfirm }) {
+function confirmAction({ title, message, confirmLabel = 'Conferma', danger = true, onConfirm, onCancel }) {
   openModal({
     title,
     bodyHtml: `
@@ -108,7 +108,13 @@ function confirmAction({ title, message, confirmLabel = 'Conferma', danger = tru
       </div>
     `,
     onMount: (body) => {
-      body.querySelector('#confirm-cancel').addEventListener('click', closeModal);
+      // onCancel serve a chi ha aperto la conferma da dentro un'altra finestra:
+      // openModal riusa un solo contenitore, quindi la precedente e' gia' stata
+      // sostituita e va riaperta a mano.
+      body.querySelector('#confirm-cancel').addEventListener('click', () => {
+        closeModal();
+        if (onCancel) onCancel();
+      });
       body.querySelector('#confirm-ok').addEventListener('click', () => {
         closeModal();
         onConfirm();

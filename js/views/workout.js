@@ -392,30 +392,54 @@ function exerciseEntryHtml(entry) {
   `;
 }
 
-function exercisePickCardHtml(ex) {
+// Gli esercizi liberi (digitati a mano, senza scheda in libreria) non hanno un
+// id: si confrontano per nome, cosi' "Panca piana" scritto a mano e la "Panca
+// piana" della libreria contano come lo stesso esercizio.
+function exerciseKey(exerciseId, name) {
+  return exerciseId || `free:${(name || '').trim().toLowerCase()}`;
+}
+
+// Esercizi gia' presenti nell'allenamento in corso: nella finestra di scelta
+// vengono mostrati in grigio, per non rifarli per sbaglio.
+function doneExerciseKeys() {
+  const w = store.getActiveWorkout();
+  if (!w) return new Set();
+  const keys = new Set();
+  w.exercises.forEach((e) => {
+    keys.add(exerciseKey(e.exerciseId, e.name));
+    keys.add(exerciseKey(null, e.name));
+  });
+  return keys;
+}
+
+function exercisePickCardHtml(ex, done) {
   const thumb = ex.imageUrl ? `<img src="${escapeHtml(ex.imageUrl)}" alt="" loading="lazy" draggable="false" />` : icon('dumbbell');
   const badges = (ex.muscleGroups || []).map((key) => {
     const mg = muscleGroup(key);
     return `<span class="badge" style="background:${mg.color}">${escapeHtml(mg.label)}</span>`;
   }).join(' ');
+  const doneBadge = done ? `<span class="badge badge-done">${icon('check')} Già fatto</span>` : '';
   return `
-    <div class="card exercise-card glass" data-pick-exercise="${ex.id}">
+    <div class="card exercise-card glass ${done ? 'is-done' : ''}" data-pick-exercise="${ex.id}">
       <div class="exercise-thumb">${thumb}</div>
       <div class="exercise-info">
         <div class="exercise-name">${escapeHtml(ex.name)}</div>
-        <div class="flex gap-2" style="flex-wrap:wrap">${badges}</div>
+        <div class="flex gap-2" style="flex-wrap:wrap">${doneBadge}${badges}</div>
       </div>
     </div>
   `;
 }
 
-function openAddExerciseModal() {
+function openAddExerciseModal(initialQuery) {
   const { exercises } = store.get();
   const activeWorkout = store.getActiveWorkout();
   const day = activeWorkout && activeWorkout.dayId ? store.getDay(activeWorkout.dayId) : null;
   const suggested = day
     ? day.entries.map((e) => store.getExercise(e.exerciseId)).filter(Boolean)
     : [];
+  const done = doneExerciseKeys();
+  const isDone = (exerciseId, name) => done.has(exerciseKey(exerciseId, name)) || done.has(exerciseKey(null, name));
+  const cardHtml = (ex) => exercisePickCardHtml(ex, isDone(ex.id, ex.name));
 
   const renderList = (filterText) => {
     const q = (filterText || '').trim().toLowerCase();
@@ -423,13 +447,13 @@ function openAddExerciseModal() {
     if (!q && suggested.length) {
       return `
         <p class="text-secondary" style="font-size:0.8rem;margin:0 0 8px">Esercizi di "${escapeHtml(day.name)}"</p>
-        ${suggested.map(exercisePickCardHtml).join('')}
+        ${suggested.map(cardHtml).join('')}
       `;
     }
 
     const matches = q.length ? exercises.filter((ex) => ex.name.toLowerCase().includes(q)) : exercises;
     const listHtml = matches.length
-      ? matches.map(exercisePickCardHtml).join('')
+      ? matches.map(cardHtml).join('')
       : `<p class="text-secondary text-center mt-4">Nessun esercizio trovato nella libreria.</p>`;
 
     const freeButton = q.length >= 2
@@ -442,8 +466,8 @@ function openAddExerciseModal() {
   openModal({
     title: 'Aggiungi esercizio',
     bodyHtml: `
-      <input type="text" class="input" id="pick-search" inputmode="search" enterkeyhint="search" placeholder="Cerca in tutta la libreria..." style="margin-bottom:12px" />
-      <div id="pick-list">${renderList('')}</div>
+      <input type="text" class="input" id="pick-search" inputmode="search" enterkeyhint="search" placeholder="Cerca in tutta la libreria..." style="margin-bottom:12px" value="${escapeHtml(initialQuery || '')}" />
+      <div id="pick-list">${renderList(initialQuery || '')}</div>
     `,
     onMount: (body) => {
       const listEl = body.querySelector('#pick-list');
@@ -461,16 +485,35 @@ function openAddExerciseModal() {
         renderCurrent();
       }
 
+      // Su un esercizio gia' segnato si chiede conferma invece di aggiungerlo
+      // di slancio. Annullando si torna alla lista com'era: openModal riusa un
+      // solo contenitore, quindi la finestra di scelta va riaperta.
+      function pickExercise({ exerciseId, name }) {
+        if (!isDone(exerciseId, name)) {
+          addExercise({ exerciseId, name });
+          return;
+        }
+        const query = searchInput.value;
+        confirmAction({
+          title: 'Esercizio già svolto',
+          message: 'Hai già svolto questo esercizio, confermi di volerlo aggiungere comunque?',
+          confirmLabel: 'Aggiungi comunque',
+          danger: false,
+          onConfirm: () => addExercise({ exerciseId, name }),
+          onCancel: () => openAddExerciseModal(query),
+        });
+      }
+
       function bind() {
         listEl.querySelectorAll('[data-pick-exercise]').forEach((card) => {
           card.addEventListener('click', () => {
             const ex = store.getExercise(card.dataset.pickExercise);
-            if (ex) addExercise({ exerciseId: ex.id, name: ex.name });
+            if (ex) pickExercise({ exerciseId: ex.id, name: ex.name });
           });
         });
         const freeBtn = listEl.querySelector('#add-free-exercise-btn');
         if (freeBtn) {
-          freeBtn.addEventListener('click', () => addExercise({ exerciseId: null, name: searchInput.value.trim() }));
+          freeBtn.addEventListener('click', () => pickExercise({ exerciseId: null, name: searchInput.value.trim() }));
         }
       }
       bind();
@@ -580,7 +623,7 @@ function renderActive(container) {
     });
   });
 
-  container.querySelector('#add-exercise-btn').addEventListener('click', openAddExerciseModal);
+  container.querySelector('#add-exercise-btn').addEventListener('click', () => openAddExerciseModal());
 
   container.querySelectorAll('[data-rename]').forEach((input) => {
     input.addEventListener('blur', () => {
