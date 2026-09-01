@@ -27,7 +27,7 @@ Nessun account, nessuna pubblicità: solo uno strumento semplice per tenere orga
 - **Storico allenamenti** e grafico dei progressi (Progressi → Allenamenti).
 - **Misure del corpo** (Progressi → Misure): peso, altezza, massa grassa e le circonferenze che si prendono col metro, con data e ora registrate da sole a ogni misurazione, indice di massa corporea e grafico dell'andamento di ogni misura.
 - **Virtual Personal Trainer**: genera una scheda su misura con l'IA (Groq) a partire da dati, obiettivo e livello — vedi [`cloudflare-worker/`](cloudflare-worker/worker.js) per la configurazione.
-- **Impostazioni**: tema chiaro/scuro (scuro di default), esportazione/importazione backup in JSON, cancellazione dati.
+- **Impostazioni**: tema chiaro/scuro (scuro di default), esportazione/importazione backup in JSON.
 - Installabile come app, con funzionamento offline.
 
 ## Privacy e dati
