@@ -25,6 +25,28 @@ const MUSCLE_GROUPS = [
   { key: 'altro', label: 'Altro', color: 'var(--mg-altro)' },
 ];
 
+// Le misure del corpo che si segnano in palestra. L'ordine e' quello del
+// modulo di inserimento: prima le due che si aggiornano piu' spesso, poi le
+// circonferenze dall'alto verso il basso, come si prendono col metro.
+const BODY_METRICS = [
+  { key: 'peso',        label: 'Peso',         unit: 'kg', step: '0.1' },
+  { key: 'altezza',     label: 'Altezza',      unit: 'cm', step: '0.5' },
+  { key: 'massaGrassa', label: 'Massa grassa', unit: '%',  step: '0.1' },
+  { key: 'collo',       label: 'Collo',        unit: 'cm', step: '0.5' },
+  { key: 'spalle',      label: 'Spalle',       unit: 'cm', step: '0.5' },
+  { key: 'torace',      label: 'Torace',       unit: 'cm', step: '0.5' },
+  { key: 'braccio',     label: 'Braccio',      unit: 'cm', step: '0.5' },
+  { key: 'avambraccio', label: 'Avambraccio',  unit: 'cm', step: '0.5' },
+  { key: 'vita',        label: 'Vita',         unit: 'cm', step: '0.5' },
+  { key: 'fianchi',     label: 'Fianchi',      unit: 'cm', step: '0.5' },
+  { key: 'coscia',      label: 'Coscia',       unit: 'cm', step: '0.5' },
+  { key: 'polpaccio',   label: 'Polpaccio',    unit: 'cm', step: '0.5' },
+];
+
+function bodyMetric(key) {
+  return BODY_METRICS.find((m) => m.key === key) || null;
+}
+
 function muscleGroup(key) {
   return MUSCLE_GROUPS.find((m) => m.key === key) || MUSCLE_GROUPS[MUSCLE_GROUPS.length - 1];
 }
@@ -47,7 +69,7 @@ function recordKey(exerciseId, name) {
 }
 
 function defaultState() {
-  return { theme: 'dark', exercises: [], days: [], workouts: [], activeWorkout: null, restTimerSeconds: 90 };
+  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90 };
 }
 
 const MAX_MUSCLE_GROUPS_PER_EXERCISE = 3;
@@ -67,6 +89,9 @@ function load() {
     const parsed = JSON.parse(raw);
     const merged = { ...defaultState(), ...parsed };
     merged.exercises = (merged.exercises || []).map(migrateExercise);
+    // I backup fatti prima delle misure non hanno il campo: senza questa riga
+    // resterebbe undefined e addMeasurement fallirebbe.
+    merged.measurements = merged.measurements || [];
     return merged;
   } catch (e) {
     console.warn('Impossibile leggere i dati salvati, riparto da zero.', e);
@@ -420,6 +445,38 @@ const store = {
     save();
   },
 
+  // ---- Misure del corpo ----
+  // Ogni misurazione porta la data e l'ora del momento in cui e' stata
+  // salvata: non c'e' un campo data da compilare a mano, e' l'app a
+  // registrarlo. I valori sono un oggetto con le sole misure compilate,
+  // cosi' chi segna solo il peso non si porta dietro dieci zeri.
+  addMeasurement(values) {
+    const clean = {};
+    BODY_METRICS.forEach((m) => {
+      const n = Number(values[m.key]);
+      if (Number.isFinite(n) && n > 0) clean[m.key] = n;
+    });
+    if (!Object.keys(clean).length) return null;
+
+    const entry = { id: uid(), date: new Date().toISOString(), values: clean };
+    state.measurements.push(entry);
+    save();
+    return entry;
+  },
+  getMeasurements() {
+    return [...state.measurements].sort((a, b) => new Date(b.date) - new Date(a.date));
+  },
+  deleteMeasurement(id) {
+    state.measurements = state.measurements.filter((m) => m.id !== id);
+    save();
+  },
+  // L'ultimo valore noto di una misura, anche se non e' nella misurazione
+  // piu' recente: l'altezza si segna una volta e resta buona per sempre.
+  latestMeasurementValue(key) {
+    const found = this.getMeasurements().find((m) => m.values[key] != null);
+    return found ? { value: found.values[key], date: found.date } : null;
+  },
+
   // ---- Ultima posizione nell'app (per riaprirla dov'era) ----
   getLastPosition() {
     try {
@@ -459,6 +516,6 @@ const store = {
 };
 
 window.MyGym = window.MyGym || {};
-Object.assign(window.MyGym, { store, MUSCLE_GROUPS, muscleGroup, uid, applyTheme, MAX_MUSCLE_GROUPS_PER_EXERCISE });
+Object.assign(window.MyGym, { store, MUSCLE_GROUPS, muscleGroup, BODY_METRICS, bodyMetric, uid, applyTheme, MAX_MUSCLE_GROUPS_PER_EXERCISE });
 
 })();

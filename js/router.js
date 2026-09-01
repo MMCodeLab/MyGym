@@ -138,6 +138,11 @@ function route() {
   } else if (parts[0] === 'progressi') {
     routeKey = 'progressi';
     renderFn = views.progress.render;
+  } else if (parts[0] === 'misure') {
+    // Come lo storico: le misure sono un dettaglio di "Progressi", quindi la
+    // voce evidenziata nella barra in basso resta quella.
+    routeKey = 'progressi';
+    renderFn = views.measurements.render;
   } else if (parts[0] === 'storico') {
     // Lo storico e' il dettaglio di "Progressi": la voce evidenziata resta quella.
     routeKey = 'progressi';

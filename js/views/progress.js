@@ -1,7 +1,7 @@
 // Script classico (non un modulo ES): espone tutto su window.MyGym.views.progress.
 (function () {
 
-const { store, icon, escapeHtml, navigate } = window.MyGym;
+const { store, icon, escapeHtml, navigate, BODY_METRICS } = window.MyGym;
 
 // ---------- Scorciatoia allo storico + record personali ----------
 
@@ -44,6 +44,40 @@ function statsHeroHtml() {
       <span class="stats-hero-text">
         <span class="stats-hero-title">Allenamenti</span>
         <span class="stats-hero-desc">${workouts.length ? 'Storico completo e grafico dei progressi' : 'Qui compariranno storico e grafico dei progressi'}</span>
+        ${metrics}
+      </span>
+      <span class="stats-hero-chevron">${icon('chevronDown')}</span>
+    </button>
+  `;
+}
+
+// Quante misure diverse sono state segnate almeno una volta: e' il modo piu'
+// onesto di riassumere in una riga uno storico fatto di campi facoltativi.
+function trackedMetricCount(measurements) {
+  return BODY_METRICS.filter((m) => measurements.some((e) => e.values[m.key] != null)).length;
+}
+
+function measuresHeroHtml() {
+  const measurements = store.getMeasurements();
+  const weight = store.latestMeasurementValue('peso');
+
+  let metrics = '';
+  if (measurements.length) {
+    const tracked = trackedMetricCount(measurements);
+    metrics = `
+      <span class="stats-hero-metrics">
+        ${weight ? `<span><strong>${formatKg(weight.value)}</strong> kg oggi</span>` : ''}
+        <span><strong>${measurements.length}</strong> misurazion${measurements.length === 1 ? 'e' : 'i'}</span>
+        <span><strong>${tracked}</strong> misur${tracked === 1 ? 'a' : 'e'} seguite</span>
+      </span>`;
+  }
+
+  return `
+    <button class="stats-hero" id="measures-row">
+      <span class="stats-hero-icon">${icon('ruler')}</span>
+      <span class="stats-hero-text">
+        <span class="stats-hero-title">Misure</span>
+        <span class="stats-hero-desc">${measurements.length ? 'Peso, altezza e circonferenze, con il loro andamento' : "Segna peso, altezza e circonferenze e guardane l'andamento"}</span>
         ${metrics}
       </span>
       <span class="stats-hero-chevron">${icon('chevronDown')}</span>
@@ -117,14 +151,16 @@ function render(container) {
     <h1 class="section-title">Progressi</h1>
     <p class="section-subtitle">Storico, grafici e record personali.</p>
 
-    <div class="page-section">
+    <div class="page-section stats-hero-stack">
       ${statsHeroHtml()}
+      ${measuresHeroHtml()}
     </div>
 
     ${recordsSectionHtml()}
   `;
 
   container.querySelector('#workouts-row').addEventListener('click', () => navigate('#/storico'));
+  container.querySelector('#measures-row').addEventListener('click', () => navigate('#/misure'));
 
   container.querySelectorAll('[data-record-toggle]').forEach((head) => {
     head.addEventListener('click', () => {
