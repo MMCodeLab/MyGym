@@ -1,4 +1,7 @@
-const CACHE_VERSION = 'mygym-v5';
+// Alza questo numero a ogni pubblicazione: e' il cambiamento di questo file
+// che fa accorgere il browser che c'e' una versione nuova, e quindi fa
+// comparire l'avviso "Nuova versione disponibile" (vedi js/pwa-shell.js).
+const CACHE_VERSION = 'mygym-v6';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -11,6 +14,7 @@ const SHELL_ASSETS = [
   'js/state.js',
   'js/router.js',
   'js/components.js',
+  'js/pwa-shell.js',
   'js/exercise-api.js',
   'js/views/home.js',
   'js/views/day.js',
@@ -27,12 +31,18 @@ const SHELL_ASSETS = [
   'icons/favicon.png',
 ];
 
+// Niente skipWaiting() qui: la versione nuova resta "in attesa" finche' non e'
+// l'utente a toccare "Aggiorna" nell'avviso, cosi' l'app non si ricarica sotto
+// le dita mentre si sta registrando una serie. Il messaggio arriva da
+// js/pwa-shell.js.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(SHELL_CACHE)
-      .then((cache) => cache.addAll(SHELL_ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ASSETS))
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

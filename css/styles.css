@@ -21,6 +21,10 @@
   --ease-spring: cubic-bezier(.22, 1, .36, 1);
   --ease-out: cubic-bezier(.16, 1, .3, 1);
 
+  /* Quanto in alto compaiono le barrette del guscio comune (js/pwa-shell.js):
+     abbastanza da restare sopra la bottom nav e sopra il pulsante rotondo. */
+  --pwa-shell-offset: 168px;
+
   --accent-a: #8b5cf6;
   --accent-b: #06b6d4;
   --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
@@ -63,6 +67,10 @@
   --overlay-bg: rgba(6, 8, 16, 0.6);
   --skeleton-base: rgba(255, 255, 255, 0.08);
   --skeleton-shine: rgba(255, 255, 255, 0.18);
+
+  /* Avvisi non gravi (es. "e' ora di fare un backup"). Il --gold del tema
+     scuro su fondo chiaro non si leggerebbe, quindi cambia col tema. */
+  --warning: #f4b740;
 }
 
 /* ---------- Light theme ---------- */
@@ -85,6 +93,8 @@
   --overlay-bg: rgba(238, 241, 248, 0.7);
   --skeleton-base: rgba(20, 22, 31, 0.08);
   --skeleton-shine: rgba(20, 22, 31, 0.15);
+
+  --warning: #a56100;
 }
 
 * { box-sizing: border-box; }

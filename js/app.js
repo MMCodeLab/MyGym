@@ -2,7 +2,7 @@
 // window.MyGym contiene gia' store, componenti, router e tutte le viste.
 (function () {
 
-const { applyTheme, icon, initRouter } = window.MyGym;
+const { applyTheme, icon, initRouter, store, navigate } = window.MyGym;
 
 // Tema applicato subito, prima del primo paint utile.
 applyTheme();
@@ -56,30 +56,19 @@ initRouter();
 setAppHeight();
 setTimeout(setAppHeight, 400);
 
-// Il service worker richiede http/https: se la pagina e' aperta come file
-// locale (file://) semplicemente non si registra, senza errori bloccanti.
-const isLocalDev = ['localhost', '127.0.0.1'].includes(location.hostname);
-
-if ('serviceWorker' in navigator) {
-  if (isLocalDev) {
-    // In sviluppo locale il service worker fa piu' danni che altro: mette in
-    // cache i file e poi li riserve anche dopo che li hai modificati, dando
-    // l'impressione che le modifiche non vengano applicate. Lo disattiviamo
-    // e ripuliamo eventuali cache lasciate da una registrazione precedente,
-    // cosi' si vede sempre l'ultima versione dei file.
-    navigator.serviceWorker.getRegistrations().then((regs) => {
-      regs.forEach((reg) => reg.unregister());
-    });
-    if (window.caches) {
-      caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
-    }
-  } else if (location.protocol.startsWith('http')) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch((err) => {
-        console.warn('Registrazione service worker fallita:', err);
-      });
-    });
-  }
+// Il guscio comune (js/pwa-shell.js) si occupa da solo del service worker,
+// dell'avviso di nuova versione e della barretta "sei offline". Qui gli si
+// dice soltanto come sono fatti i dati di MyGym.
+if (window.PwaShell) {
+  window.PwaShell.configure({
+    // Senza giorni ne' esercizi non c'e' ancora niente da salvare, quindi il
+    // promemoria del backup non ha motivo di comparire.
+    hasData: () => {
+      const { days, exercises, workouts } = store.get();
+      return days.length > 0 || exercises.length > 0 || workouts.length > 0;
+    },
+    onBackupRequest: () => navigate('#/impostazioni'),
+  });
 }
 
 })();
