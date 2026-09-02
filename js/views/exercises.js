@@ -72,7 +72,9 @@ let searchDebounce = null;
 // Finche' non lo si sceglie a mano resta null e segue il nome digitato, cosi'
 // scrivendo "Tapis roulant" si propone gia' da solo.
 const KIND_CHIPS = [
-  { key: 'forza', icon: 'dumbbell', label: 'Ripetizioni e carico' },
+  // icona 'esercizi' e non 'dumbbell': quest'ultima, in piccolo, sembra un
+  // segnale di divieto invece che un manubrio.
+  { key: 'forza', icon: 'esercizi', label: 'Ripetizioni e carico' },
   { key: 'cardio', icon: 'stopwatch', label: 'Tempo e velocità' },
 ];
 

@@ -400,7 +400,7 @@ function exerciseEntryHtml(entry) {
         <input type="text" class="input workout-exercise-name" value="${escapeHtml(entry.name)}" data-rename="${entry.id}" maxlength="60" />
         <button class="icon-btn kind-toggle-btn${isCardio ? ' is-cardio' : ''}" data-toggle-kind="${entry.id}"
           aria-label="${isCardio ? 'Passa a ripetizioni e carico' : 'Passa a tempo e velocità'}"
-          title="${isCardio ? 'Ora chiede tempo e velocità: tocca per tornare a ripetizioni e carico' : 'Ora chiede ripetizioni e carico: tocca per passare a tempo e velocità'}">${icon(isCardio ? 'stopwatch' : 'dumbbell')}</button>
+          title="${isCardio ? 'Ora chiede tempo e velocità: tocca per tornare a ripetizioni e carico' : 'Ora chiede ripetizioni e carico: tocca per passare a tempo e velocità'}">${icon(isCardio ? 'stopwatch' : 'esercizi')}</button>
         <button class="icon-btn danger" data-remove-exercise="${entry.id}" aria-label="Rimuovi esercizio">${icon('trash')}</button>
       </div>
       <div class="chip-row mt-2" data-muscle-picker="${entry.id}">
