@@ -116,7 +116,7 @@ function download(filename, text) {
 }
 
 function render(container) {
-  const { theme, restTimerSeconds } = store.get();
+  const { theme, restTimerSeconds, sex } = store.get();
   const activeIndex = theme === 'dark' ? 0 : 1;
 
   container.innerHTML = `
@@ -135,6 +135,21 @@ function render(container) {
         <span class="segmented-thumb"></span>
         <span class="segmented-opt ${theme === 'dark' ? 'active' : ''}" data-theme-opt="dark">${icon('moon')} Scuro</span>
         <span class="segmented-opt ${theme === 'light' ? 'active' : ''}" data-theme-opt="light">${icon('sun')} Chiaro</span>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Corpo</h3>
+      <div class="settings-row glass">
+        <div class="settings-row-text">
+          <div class="settings-row-title">Sesso</div>
+          <div class="settings-row-desc">Sceglie la figura della mappa dei muscoli in "Progressi" e i traguardi delle medaglie, che per uomo e donna sono diversi.</div>
+        </div>
+      </div>
+      <div class="chip-row" id="sex-chips">
+        ${[['maschio', 'Maschio'], ['femmina', 'Femmina']].map(([key, label]) => `
+          <span class="chip ${sex === key ? 'selected' : ''}" data-sex="${key}" ${sex === key ? 'style="background:var(--accent-gradient);border-color:transparent"' : ''}>${label}</span>
+        `).join('')}
       </div>
     </div>
 
@@ -213,6 +228,13 @@ function render(container) {
     opt.addEventListener('click', () => {
       const newTheme = opt.dataset.themeOpt;
       store.setTheme(newTheme);
+      render(container);
+    });
+  });
+
+  container.querySelectorAll('[data-sex]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      store.setSex(chip.dataset.sex);
       render(container);
     });
   });

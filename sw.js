@@ -12,6 +12,7 @@ const SHELL_ASSETS = [
   'css/styles.css',
   'js/app.js',
   'js/state.js',
+  'js/body-paths.js',
   'js/router.js',
   'js/components.js',
   'js/pwa-shell.js',

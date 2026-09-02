@@ -34,6 +34,7 @@
   /* Muscle group accent hues */
   --mg-petto: #f97316;
   --mg-schiena: #22c55e;
+  --mg-trapezio: #6366f1;
   --mg-gambe: #3b82f6;
   --mg-spalle: #eab308;
   --mg-bicipiti: #ec4899;
@@ -65,6 +66,9 @@
   --text-tertiary: rgba(245, 246, 250, 0.4);
 
   --overlay-bg: rgba(6, 8, 16, 0.6);
+  --body-fill: rgba(255, 255, 255, 0.13);
+  --body-untrained: rgba(255, 255, 255, 0.26);
+  --body-outline: rgba(255, 255, 255, 0.45);
   --skeleton-base: rgba(255, 255, 255, 0.08);
   --skeleton-shine: rgba(255, 255, 255, 0.18);
 
@@ -91,6 +95,9 @@
   --text-tertiary: rgba(20, 22, 31, 0.42);
 
   --overlay-bg: rgba(238, 241, 248, 0.7);
+  --body-fill: rgba(20, 22, 31, 0.10);
+  --body-untrained: rgba(20, 22, 31, 0.22);
+  --body-outline: rgba(20, 22, 31, 0.45);
   --skeleton-base: rgba(20, 22, 31, 0.08);
   --skeleton-shine: rgba(20, 22, 31, 0.15);
 
@@ -942,6 +949,74 @@ a { color: inherit; text-decoration: none; }
 }
 .record-history-load { font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
 .record-history-row.is-current .record-history-load { color: var(--gold); }
+
+/* ---------- Mappa dei muscoli (progressi) ---------- */
+/* Sfondo piu' fermo del vetro normale: la figura ha bisogno di stacco, e sotto
+   c'e' il gradiente colorato dell'app. */
+.muscle-map-card { padding: 14px 12px 12px; background: var(--glass-bg-strong); }
+.body-figures { display: flex; gap: 6px; }
+.body-figure { flex: 1; min-width: 0; text-align: center; }
+.body-figure-label {
+  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-bottom: 2px;
+}
+.body-svg { width: 100%; height: auto; display: block; }
+.body-silhouette { fill: var(--body-fill); stroke: none; }
+/* Un muscolo senza medaglia deve comunque staccarsi dalla sagoma: e' il modo in
+   cui si vede che il corpo e' diviso in zone. */
+.muscle-zone.is-untrained { fill: var(--body-untrained); }
+.body-outline {
+  fill: none; stroke: var(--body-outline); stroke-width: 3;
+  stroke-linejoin: round; stroke-linecap: round; pointer-events: none;
+}
+.muscle-zone { cursor: pointer; stroke: rgba(0, 0, 0, 0.28); stroke-width: 1; transition: filter .18s ease; }
+.muscle-zone.is-active {
+  stroke: var(--text-primary); stroke-width: 2.5;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55));
+}
+
+.muscle-legend { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 12px; }
+.muscle-legend span {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.66rem; color: var(--text-secondary);
+  border: 1px solid var(--glass-border); background: var(--glass-bg);
+  border-radius: var(--radius-pill); padding: 3px 8px;
+}
+.muscle-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+.muscle-extra-row { display: flex; gap: 8px; margin-top: 12px; }
+.muscle-extra {
+  flex: 1; cursor: pointer; text-align: left; font: inherit; color: inherit;
+  border: 1px solid var(--glass-border); background: var(--glass-bg);
+  border-radius: var(--radius-md); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.muscle-extra.is-active { border-color: var(--text-tertiary); background: var(--glass-bg-strong); }
+.muscle-extra-name { font-weight: 700; font-size: 0.85rem; }
+.muscle-extra-note { font-size: 0.72rem; color: var(--text-secondary); }
+
+.muscle-detail { margin-top: 10px; }
+.muscle-detail-head { display: flex; align-items: center; gap: 12px; }
+.muscle-medal {
+  width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
+}
+.muscle-detail-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.muscle-detail-name { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; }
+.muscle-detail-tier { font-size: 0.8rem; font-weight: 600; }
+.muscle-ladder { display: flex; gap: 4px; margin-top: 14px; }
+.muscle-ladder span {
+  flex: 1; text-align: center; font-size: 0.58rem; line-height: 1.35;
+  padding: 6px 2px; border-radius: 10px;
+  border: 1px solid var(--glass-border); color: var(--text-tertiary);
+}
+.muscle-row {
+  margin-top: 12px; border-top: 1px solid var(--glass-border); padding-top: 10px;
+  display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
+}
+.muscle-row .l { font-size: 0.78rem; color: var(--text-secondary); }
+.muscle-row .v { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; text-align: right; }
+.muscle-note { font-size: 0.76rem; color: var(--text-secondary); line-height: 1.45; margin: 12px 0 0; }
 
 /* ---------- Weekday picker (inizia allenamento) ---------- */
 .weekday-grid {

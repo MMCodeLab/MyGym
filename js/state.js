@@ -13,6 +13,7 @@ const UI_KEY = 'mygym.ui.v1';
 const MUSCLE_GROUPS = [
   { key: 'petto', label: 'Petto', color: 'var(--mg-petto)' },
   { key: 'schiena', label: 'Schiena', color: 'var(--mg-schiena)' },
+  { key: 'trapezio', label: 'Trapezio', color: 'var(--mg-trapezio)' },
   { key: 'gambe', label: 'Gambe', color: 'var(--mg-gambe)' },
   { key: 'spalle', label: 'Spalle', color: 'var(--mg-spalle)' },
   { key: 'bicipiti', label: 'Bicipiti', color: 'var(--mg-bicipiti)' },
@@ -101,7 +102,7 @@ function emptySet(kind) {
 }
 
 function defaultState() {
-  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90 };
+  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90, sex: 'maschio' };
 }
 
 const MAX_MUSCLE_GROUPS_PER_EXERCISE = 3;
@@ -179,6 +180,12 @@ const store = {
     state.theme = theme;
     save();
     applyTheme();
+  },
+
+  // ---- Sesso (figura e traguardi della mappa dei muscoli) ----
+  setSex(sex) {
+    state.sex = sex === 'femmina' ? 'femmina' : 'maschio';
+    save();
   },
 
   // ---- Timer di recupero ----
@@ -402,6 +409,29 @@ const store = {
   // serie migliore di sempre e la sequenza delle volte in cui il record e'
   // stato battuto. Si ricalcola al volo invece di essere salvata, cosi' resta
   // coerente anche se un allenamento viene cancellato dallo storico.
+  // Per ogni gruppo muscolare la serie piu' forte di sempre, presa dallo
+  // storico: e' quello che la mappa dei muscoli confronta con i traguardi delle
+  // medaglie. Il cardio non entra, non avendo carichi.
+  getMuscleBests() {
+    const best = {};
+    state.workouts.forEach((w) => {
+      w.exercises.forEach((e) => {
+        if (e.kind === 'cardio') return;
+        const muscles = e.muscles || [];
+        if (!muscles.length) return;
+        e.sets.forEach((set) => {
+          const oneRM = estimated1RM(set.weight, set.reps);
+          if (!oneRM) return;
+          muscles.forEach((key) => {
+            if (!best[key] || oneRM > best[key].oneRM) {
+              best[key] = { oneRM, name: e.name, weight: set.weight, reps: set.reps, date: w.date };
+            }
+          });
+        });
+      });
+    });
+    return best;
+  },
   getPersonalRecords() {
     const byKey = new Map();
 
