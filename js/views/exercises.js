@@ -1,7 +1,7 @@
 // Script classico (non un modulo ES): espone tutto su window.MyGym.views.exercises.
 (function () {
 
-const { store, MUSCLE_GROUPS, muscleGroup, MAX_MUSCLE_GROUPS_PER_EXERCISE, icon, escapeHtml, openModal, closeModal, showToast, confirmAction, searchExerciseImages, translateInstructionsToItalian } = window.MyGym;
+const { store, MUSCLE_GROUPS, muscleGroup, MAX_MUSCLE_GROUPS_PER_EXERCISE, guessExerciseKind, icon, escapeHtml, openModal, closeModal, showToast, confirmAction, searchExerciseImages, translateInstructionsToItalian } = window.MyGym;
 
 let activeFilter = 'tutti';
 let searchQuery = '';
@@ -64,12 +64,32 @@ function muscleMultiChipsHtml(selected) {
 let selectedSuggestionImage = null;
 let selectedMuscleGroups = [];
 let selectedDescription = null;
+let selectedKind = null;
 let searchDebounce = null;
+
+// Il tipo decide cosa chiedere durante l'allenamento: ripetizioni e carico,
+// oppure tempo e velocita' media (tapis roulant, cyclette, ellittica...).
+// Finche' non lo si sceglie a mano resta null e segue il nome digitato, cosi'
+// scrivendo "Tapis roulant" si propone gia' da solo.
+const KIND_CHIPS = [
+  { key: 'forza', icon: 'dumbbell', label: 'Ripetizioni e carico' },
+  { key: 'cardio', icon: 'stopwatch', label: 'Tempo e velocità' },
+];
+
+function kindChipsHtml(activeKind) {
+  return KIND_CHIPS.map((k) => `
+    <span class="chip ${k.key === activeKind ? 'selected' : ''}" data-kind="${k.key}"
+      ${k.key === activeKind ? 'style="background:var(--accent-gradient);border-color:transparent"' : ''}>
+      ${icon(k.icon)} ${k.label}
+    </span>
+  `).join('');
+}
 
 function openExerciseModal(existing) {
   selectedSuggestionImage = existing ? existing.imageUrl : null;
   selectedMuscleGroups = existing ? [...(existing.muscleGroups || [])] : [];
   selectedDescription = existing ? existing.description : null;
+  selectedKind = existing ? (existing.kind || 'forza') : null;
 
   openModal({
     title: existing ? 'Modifica esercizio' : 'Nuovo esercizio',
@@ -97,6 +117,13 @@ function openExerciseModal(existing) {
         </div>
       </div>
 
+      <div class="field">
+        <label>Cosa segni durante l'allenamento</label>
+        <div class="chip-row" id="kind-picker" style="flex-wrap:wrap;overflow:visible">
+          ${kindChipsHtml(selectedKind || guessExerciseKind({ name: existing ? existing.name : '', muscleGroups: selectedMuscleGroups }))}
+        </div>
+      </div>
+
       <button class="btn btn-primary btn-block" id="save-exercise-btn">Salva esercizio</button>
     `,
     onMount: (body) => {
@@ -105,7 +132,23 @@ function openExerciseModal(existing) {
       const status = body.querySelector('#suggestion-status');
       const mgPicker = body.querySelector('#mg-picker');
       const mgCounter = body.querySelector('#mg-counter');
+      const kindPicker = body.querySelector('#kind-picker');
       nameInput.focus();
+
+      function currentKind() {
+        return selectedKind || guessExerciseKind({ name: nameInput.value, muscleGroups: selectedMuscleGroups });
+      }
+
+      function paintKindPicker() {
+        kindPicker.innerHTML = kindChipsHtml(currentKind());
+        kindPicker.querySelectorAll('[data-kind]').forEach((chip) => {
+          chip.addEventListener('click', () => {
+            selectedKind = chip.dataset.kind;
+            paintKindPicker();
+          });
+        });
+      }
+      paintKindPicker();
 
       function paintMgPicker() {
         mgPicker.innerHTML = muscleMultiChipsHtml(selectedMuscleGroups);
@@ -122,6 +165,7 @@ function openExerciseModal(existing) {
               return;
             }
             paintMgPicker();
+            paintKindPicker();
           });
         });
       }
@@ -187,6 +231,9 @@ function openExerciseModal(existing) {
         clearTimeout(searchDebounce);
         const term = nameInput.value;
         searchDebounce = setTimeout(() => runSearch(term), 400);
+        // Il tipo proposto segue il nome finche' non lo si sceglie a mano:
+        // scrivendo "Tapis roulant" si accende da solo "Tempo e velocita'".
+        paintKindPicker();
       });
 
       if (existing) runSearch(existing.name);
@@ -203,12 +250,13 @@ function openExerciseModal(existing) {
           store.updateExercise(existing.id, {
             name,
             muscleGroups: selectedMuscleGroups,
+            kind: currentKind(),
             imageUrl: selectedSuggestionImage !== null ? selectedSuggestionImage : existing.imageUrl,
             description: selectedDescription !== null ? selectedDescription : existing.description,
           });
           showToast('Esercizio aggiornato');
         } else {
-          store.addExercise({ name, muscleGroups: selectedMuscleGroups, imageUrl: selectedSuggestionImage, description: selectedDescription });
+          store.addExercise({ name, muscleGroups: selectedMuscleGroups, kind: currentKind(), imageUrl: selectedSuggestionImage, description: selectedDescription });
           showToast('Esercizio aggiunto');
         }
         closeModal();

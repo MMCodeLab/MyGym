@@ -9,6 +9,10 @@ function formatDuration(totalSeconds) {
   return h > 0 ? `${h}h ${m}min` : `${m} min`;
 }
 
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString('it-IT', { maximumFractionDigits: 2 });
+}
+
 function computeWorkoutVolume(w) {
   return w.exercises.reduce((sum, e) => (
     sum + e.sets.reduce((s, set) => s + (set.reps || 0) * (set.weight || 0), 0)
@@ -148,7 +152,7 @@ function openWorkoutDetailModal(w) {
     <div class="card glass workout-exercise-card">
       <div class="exercise-name">${escapeHtml(e.name)}</div>
       <div class="sets-list mt-2">
-        ${e.sets.map((s, i) => `<div class="set-row set-row-readonly"><span class="set-label">Serie ${i + 1}</span><span class="text-secondary">${s.reps || 0} reps × ${s.weight || 0} kg</span></div>`).join('')}
+        ${e.sets.map((s, i) => `<div class="set-row set-row-readonly"><span class="set-label">Serie ${i + 1}</span><span class="text-secondary">${e.kind === 'cardio' ? `${formatNumber(s.minutes)} min · ${formatNumber(s.speed)} km/h` : `${formatNumber(s.reps)} reps × ${formatNumber(s.weight)} kg`}</span></div>`).join('')}
       </div>
     </div>
   `).join('');

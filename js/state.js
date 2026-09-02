@@ -68,6 +68,38 @@ function recordKey(exerciseId, name) {
   return exerciseId || `free:${(name || '').trim().toLowerCase()}`;
 }
 
+// Un esercizio e' "forza" (ripetizioni x carico) oppure "cardio" (tempo e
+// velocita' media): sul tapis roulant chiedere i chili non ha senso.
+const EXERCISE_KINDS = ['forza', 'cardio'];
+
+// Parole che indicano quasi sempre un attrezzo cardio. Servono a indovinare il
+// tipo di un esercizio scritto a mano durante l'allenamento e a migrare la
+// libreria di chi ha gia' i suoi esercizi salvati, senza chiedergli di
+// ripassarli uno per uno.
+const CARDIO_NAME_HINTS = [
+  'tapis', 'treadmill', 'corsa', 'corri', 'running', 'jogging', 'camminat',
+  // "biciclett" e non "bici": altrimenti "Curl bicipiti" passerebbe per cardio.
+  'cyclette', 'biciclett', 'bici ', 'bike', 'spinning', 'ellittic', 'vogatore', 'rower',
+  'remoergometro', 'stepper', 'scala mobile', 'stairmaster', 'nuoto', 'cardio',
+];
+
+function guessExerciseKind({ name, muscleGroups }) {
+  if ((muscleGroups || []).includes('cardio')) return 'cardio';
+  const n = (name || '').toLowerCase();
+  return CARDIO_NAME_HINTS.some((hint) => n.includes(hint)) ? 'cardio' : 'forza';
+}
+
+function resolveExerciseKind(kind, source) {
+  return EXERCISE_KINDS.includes(kind) ? kind : guessExerciseKind(source || {});
+}
+
+// Una serie nasce con i campi del suo tipo. Passando da un tipo all'altro i
+// valori gia' scritti non si toccano: restano nell'oggetto e si ritrovano se
+// si torna indietro.
+function emptySet(kind) {
+  return kind === 'cardio' ? { minutes: null, speed: null } : { reps: null, weight: null };
+}
+
 function defaultState() {
   return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90 };
 }
@@ -75,11 +107,19 @@ function defaultState() {
 const MAX_MUSCLE_GROUPS_PER_EXERCISE = 3;
 
 // Migra gli esercizi salvati prima dell'introduzione dei gruppi muscolari
-// multipli (campo singolare "muscleGroup") al nuovo campo array "muscleGroups".
+// multipli (campo singolare "muscleGroup") al nuovo campo array "muscleGroups"
+// e prima della distinzione forza/cardio (campo "kind", dedotto dal gruppo
+// muscolare o dal nome).
 function migrateExercise(ex) {
-  if (ex.muscleGroups) return ex;
-  const { muscleGroup, ...rest } = ex;
-  return { ...rest, muscleGroups: muscleGroup ? [muscleGroup] : [] };
+  let migrated = ex;
+  if (!migrated.muscleGroups) {
+    const { muscleGroup, ...rest } = migrated;
+    migrated = { ...rest, muscleGroups: muscleGroup ? [muscleGroup] : [] };
+  }
+  if (!EXERCISE_KINDS.includes(migrated.kind)) {
+    migrated = { ...migrated, kind: guessExerciseKind(migrated) };
+  }
+  return migrated;
 }
 
 function load() {
@@ -162,11 +202,13 @@ const store = {
   },
 
   // ---- Exercises (global library) ----
-  addExercise({ name, muscleGroups, imageUrl, description }) {
+  addExercise({ name, muscleGroups, imageUrl, description, kind }) {
+    const groups = (muscleGroups || []).slice(0, MAX_MUSCLE_GROUPS_PER_EXERCISE);
     const ex = {
       id: uid(),
       name: name.trim(),
-      muscleGroups: (muscleGroups || []).slice(0, MAX_MUSCLE_GROUPS_PER_EXERCISE),
+      muscleGroups: groups,
+      kind: resolveExerciseKind(kind, { name, muscleGroups: groups }),
       imageUrl: imageUrl || null,
       description: description || null,
       createdAt: Date.now(),
@@ -179,6 +221,7 @@ const store = {
     const ex = state.exercises.find((e) => e.id === id);
     if (!ex) return;
     if (patch.muscleGroups) patch = { ...patch, muscleGroups: patch.muscleGroups.slice(0, MAX_MUSCLE_GROUPS_PER_EXERCISE) };
+    if ('kind' in patch) patch = { ...patch, kind: resolveExerciseKind(patch.kind, { ...ex, ...patch }) };
     Object.assign(ex, patch);
     save();
   },
@@ -268,14 +311,16 @@ const store = {
     Object.assign(state.activeWorkout, patch);
     save();
   },
-  addActiveWorkoutExercise({ exerciseId, name, muscles }) {
+  addActiveWorkoutExercise({ exerciseId, name, muscles, kind }) {
     if (!state.activeWorkout) return null;
+    const resolvedKind = resolveExerciseKind(kind, { name, muscleGroups: muscles });
     const entry = {
       id: uid(),
       exerciseId: exerciseId || null,
       name: name.trim(),
       muscles: muscles || [],
-      sets: [{ reps: null, weight: null }],
+      kind: resolvedKind,
+      sets: [emptySet(resolvedKind)],
     };
     state.activeWorkout.exercises.push(entry);
     save();
@@ -297,7 +342,18 @@ const store = {
     if (!state.activeWorkout) return;
     const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
     if (!entry) return;
-    entry.sets.push({ reps: null, weight: null });
+    entry.sets.push(emptySet(entry.kind));
+    save();
+  },
+  // Cambia il tipo di un esercizio mentre lo si sta compilando (es. si e'
+  // aggiunto "Tapis roulant" a mano e chiede ripetizioni). I valori dell'altro
+  // tipo restano nelle serie: tornando indietro si ritrovano.
+  setActiveWorkoutExerciseKind(entryId, kind) {
+    if (!state.activeWorkout || !EXERCISE_KINDS.includes(kind)) return;
+    const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
+    if (!entry || entry.kind === kind) return;
+    entry.kind = kind;
+    entry.sets = entry.sets.map((set) => ({ ...emptySet(kind), ...set }));
     save();
   },
   removeActiveWorkoutSet(entryId, setIndex) {
@@ -328,6 +384,7 @@ const store = {
     let best = null;
     state.workouts.forEach((w) => {
       w.exercises.forEach((e) => {
+        if (e.kind === 'cardio') return; // niente massimale su tempo e velocita'
         if (recordKey(e.exerciseId, e.name) !== key) return;
         e.sets.forEach((s) => {
           const oneRM = estimated1RM(s.weight, s.reps);
@@ -357,6 +414,7 @@ const store = {
         // migliore, cioe' quello con cui il record e' rimasto.
         const bestOfWorkout = new Map();
         w.exercises.forEach((e) => {
+          if (e.kind === 'cardio') return; // i record sono sui carichi
           const key = recordKey(e.exerciseId, e.name);
           let acc = bestOfWorkout.get(key);
           if (!acc) {
@@ -420,12 +478,18 @@ const store = {
       weekday: w.weekday,
       date: new Date().toISOString(),
       durationSeconds: Math.round(elapsedMs / 1000),
-      exercises: w.exercises.map((e) => ({
-        exerciseId: e.exerciseId,
-        name: e.name,
-        muscles: e.muscles,
-        sets: e.sets.map((s) => ({ reps: s.reps || 0, weight: s.weight || 0 })),
-      })),
+      exercises: w.exercises.map((e) => {
+        const kind = e.kind === 'cardio' ? 'cardio' : 'forza';
+        return {
+          exerciseId: e.exerciseId,
+          name: e.name,
+          muscles: e.muscles,
+          kind,
+          sets: e.sets.map((s) => (kind === 'cardio'
+            ? { minutes: s.minutes || 0, speed: s.speed || 0 }
+            : { reps: s.reps || 0, weight: s.weight || 0 })),
+        };
+      }),
       muscles,
     };
     state.workouts.push(record);
@@ -516,6 +580,6 @@ const store = {
 };
 
 window.MyGym = window.MyGym || {};
-Object.assign(window.MyGym, { store, MUSCLE_GROUPS, muscleGroup, BODY_METRICS, bodyMetric, uid, applyTheme, MAX_MUSCLE_GROUPS_PER_EXERCISE });
+Object.assign(window.MyGym, { store, MUSCLE_GROUPS, muscleGroup, BODY_METRICS, bodyMetric, uid, applyTheme, MAX_MUSCLE_GROUPS_PER_EXERCISE, EXERCISE_KINDS, guessExerciseKind });
 
 })();

@@ -26,6 +26,7 @@ function currentElapsedMs(w) {
 // con il meglio storico. Non mostra il toast: serve sia per il check silenzioso
 // al render sia come base per la celebrazione al cambio valore. Ritorna true/false.
 function evaluateSetRecord(entry, setIndex, row) {
+  if (entry.kind === 'cardio') return false; // tempo e velocita' non fanno massimali
   const set = entry.sets[setIndex];
   const label = row.querySelector('.set-label');
   const isPr = !!(set && set.weight && set.reps &&
@@ -359,33 +360,54 @@ function muscleMultiChipsHtml(entryId, selected) {
   `).join('');
 }
 
-function setRowHtml(entryId, set, index, total) {
+// Sul tapis roulant (e in genere sul cardio) chiedere carico e ripetizioni non
+// ha senso: la stessa riga cambia i due campi in tempo e velocita' media.
+function setFieldsHtml(entry, set, index) {
+  const attrs = (field) => `data-set-field="${field}" data-entry="${entry.id}" data-index="${index}"`;
+  if (entry.kind === 'cardio') {
+    return `
+      <input type="text" inputmode="decimal" class="input input-set" placeholder="min" value="${set.minutes ?? ''}" ${attrs('minutes')} />
+      <span class="set-unit">min</span>
+      <input type="text" inputmode="decimal" class="input input-set" placeholder="km/h" value="${set.speed ?? ''}" ${attrs('speed')} />
+      <span class="set-unit">km/h</span>
+    `;
+  }
+  return `
+    <input type="text" inputmode="decimal" class="input input-set" placeholder="reps" value="${set.reps ?? ''}" ${attrs('reps')} />
+    <span class="set-x">×</span>
+    <input type="text" inputmode="decimal" class="input input-set" placeholder="kg" value="${set.weight ?? ''}" ${attrs('weight')} />
+    <span class="set-unit">kg</span>
+  `;
+}
+
+function setRowHtml(entry, set, index, total) {
   return `
     <div class="set-row">
       <span class="set-label">Serie ${index + 1}</span>
-      <input type="text" inputmode="decimal" class="input input-set" placeholder="reps" value="${set.reps ?? ''}" data-set-field="reps" data-entry="${entryId}" data-index="${index}" />
-      <span class="set-x">×</span>
-      <input type="text" inputmode="decimal" class="input input-set" placeholder="kg" value="${set.weight ?? ''}" data-set-field="weight" data-entry="${entryId}" data-index="${index}" />
-      <span class="set-unit">kg</span>
+      ${setFieldsHtml(entry, set, index)}
       ${total > 1
-        ? `<button class="icon-btn danger set-remove-btn" data-remove-set data-entry="${entryId}" data-index="${index}" aria-label="Rimuovi serie">${icon('trash')}</button>`
+        ? `<button class="icon-btn danger set-remove-btn" data-remove-set data-entry="${entry.id}" data-index="${index}" aria-label="Rimuovi serie">${icon('trash')}</button>`
         : `<span class="set-remove-spacer"></span>`}
     </div>
   `;
 }
 
 function exerciseEntryHtml(entry) {
+  const isCardio = entry.kind === 'cardio';
   return `
     <div class="card glass workout-exercise-card" data-entry-id="${entry.id}">
       <div class="flex items-center justify-between gap-2">
         <input type="text" class="input workout-exercise-name" value="${escapeHtml(entry.name)}" data-rename="${entry.id}" maxlength="60" />
+        <button class="icon-btn kind-toggle-btn${isCardio ? ' is-cardio' : ''}" data-toggle-kind="${entry.id}"
+          aria-label="${isCardio ? 'Passa a ripetizioni e carico' : 'Passa a tempo e velocità'}"
+          title="${isCardio ? 'Ora chiede tempo e velocità: tocca per tornare a ripetizioni e carico' : 'Ora chiede ripetizioni e carico: tocca per passare a tempo e velocità'}">${icon(isCardio ? 'stopwatch' : 'dumbbell')}</button>
         <button class="icon-btn danger" data-remove-exercise="${entry.id}" aria-label="Rimuovi esercizio">${icon('trash')}</button>
       </div>
       <div class="chip-row mt-2" data-muscle-picker="${entry.id}">
         ${muscleMultiChipsHtml(entry.id, entry.muscles)}
       </div>
       <div class="sets-list mt-3">
-        ${entry.sets.map((s, i) => setRowHtml(entry.id, s, i, entry.sets.length)).join('')}
+        ${entry.sets.map((s, i) => setRowHtml(entry, s, i, entry.sets.length)).join('')}
       </div>
       <button class="btn btn-glass btn-sm mt-2" data-add-set="${entry.id}">${icon('plus')} Serie</button>
     </div>
@@ -480,6 +502,8 @@ function openAddExerciseModal(initialQuery) {
           exerciseId: exerciseId || null,
           name,
           muscles: ex ? [...(ex.muscleGroups || [])] : [],
+          // Per un esercizio libero il tipo lo indovina lo store dal nome.
+          kind: ex ? ex.kind : undefined,
         });
         closeModal();
         renderCurrent();
@@ -636,6 +660,18 @@ function renderActive(container) {
 
   // Il cestino sta a pochi millimetri dai campi che si compilano durante la
   // serie: senza conferma un tocco storto cancella il lavoro appena segnato.
+  container.querySelectorAll('[data-toggle-kind]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const entryId = btn.dataset.toggleKind;
+      const entry = store.getActiveWorkout().exercises.find((e) => e.id === entryId);
+      if (!entry) return;
+      const next = entry.kind === 'cardio' ? 'forza' : 'cardio';
+      store.setActiveWorkoutExerciseKind(entryId, next);
+      showToast(next === 'cardio' ? 'Ora chiede tempo e velocità' : 'Ora chiede ripetizioni e carico');
+      renderActive(container);
+    });
+  });
+
   container.querySelectorAll('[data-remove-exercise]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const entry = store.getActiveWorkout().exercises.find((e) => e.id === btn.dataset.removeExercise);
@@ -679,7 +715,9 @@ function renderActive(container) {
       const entry = store.getActiveWorkout().exercises.find((e) => e.id === entryId);
       const set = entry && entry.sets[index];
       if (!set) return;
-      const done = set.reps && set.weight ? ` (${set.reps} reps × ${set.weight} kg)` : '';
+      const done = entry.kind === 'cardio'
+        ? (set.minutes && set.speed ? ` (${set.minutes} min a ${set.speed} km/h)` : '')
+        : (set.reps && set.weight ? ` (${set.reps} reps × ${set.weight} kg)` : '');
       confirmAction({
         title: 'Rimuovere la serie?',
         message: `La serie ${index + 1}${done} di "${entry.name}" verrà tolta da questo allenamento.`,
@@ -716,9 +754,24 @@ function renderActive(container) {
 
 // ---------- Schermata 3: riepilogo ----------
 
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString('it-IT', { maximumFractionDigits: 2 });
+}
+
+function formatSetSummary(exercise, set) {
+  return exercise.kind === 'cardio'
+    ? `${formatNumber(set.minutes)} min · ${formatNumber(set.speed)} km/h`
+    : `${formatNumber(set.reps)} reps × ${formatNumber(set.weight)} kg`;
+}
+
 function renderSummary(container, record) {
   const totalSets = record.exercises.reduce((sum, e) => sum + e.sets.length, 0);
-  const totalVolume = record.exercises.reduce((sum, e) => sum + e.sets.reduce((s, set) => s + (set.reps * set.weight), 0), 0);
+  const totalVolume = record.exercises.reduce((sum, e) => (
+    e.kind === 'cardio' ? sum : sum + e.sets.reduce((s, set) => s + (set.reps * set.weight), 0)
+  ), 0);
+  const cardioMinutes = record.exercises.reduce((sum, e) => (
+    e.kind === 'cardio' ? sum + e.sets.reduce((s, set) => s + (set.minutes || 0), 0) : sum
+  ), 0);
 
   const musclesHtml = record.muscles.map((key) => {
     const mg = muscleGroup(key);
@@ -729,7 +782,7 @@ function renderSummary(container, record) {
     <div class="card glass workout-exercise-card">
       <div class="exercise-name">${escapeHtml(e.name)}</div>
       <div class="sets-list mt-2">
-        ${e.sets.map((s, i) => `<div class="set-row set-row-readonly"><span class="set-label">Serie ${i + 1}</span><span class="text-secondary">${s.reps || 0} reps × ${s.weight || 0} kg</span></div>`).join('')}
+        ${e.sets.map((s, i) => `<div class="set-row set-row-readonly"><span class="set-label">Serie ${i + 1}</span><span class="text-secondary">${formatSetSummary(e, s)}</span></div>`).join('')}
       </div>
     </div>
   `).join('');
@@ -740,7 +793,7 @@ function renderSummary(container, record) {
       <div class="empty-title">Allenamento completato!</div>
       <div class="section-subtitle" style="margin-bottom:2px">${escapeHtml(record.weekday)} — ${new Date(record.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
       <p class="text-secondary" style="font-family:var(--font-display);font-size:1.4rem;font-weight:800;margin:6px 0">${formatElapsed(record.durationSeconds * 1000)}</p>
-      <p class="text-secondary" style="font-size:0.82rem">${record.exercises.length} esercizi · ${totalSets} serie · volume totale ${Math.round(totalVolume)} kg</p>
+      <p class="text-secondary" style="font-size:0.82rem">${record.exercises.length} esercizi · ${totalSets} serie${totalVolume ? ` · volume totale ${Math.round(totalVolume)} kg` : ''}${cardioMinutes ? ` · ${Math.round(cardioMinutes)} min di cardio` : ''}</p>
       <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap;margin-top:8px">${musclesHtml}</div>
     </div>
     <div class="mt-4">${exercisesHtml}</div>

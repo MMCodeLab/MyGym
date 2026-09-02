@@ -1085,6 +1085,15 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- Esercizio in allenamento (serie/reps/kg) ---------- */
 .workout-exercise-card { display: flex; flex-direction: column; }
+/* Interruttore forza/cardio sulla scheda dell'esercizio: quando e' cardio si
+   accende, cosi' si vede a colpo d'occhio perche' i campi sono diversi. */
+.kind-toggle-btn { color: var(--text-secondary); }
+.kind-toggle-btn.is-cardio {
+  color: var(--accent-b);
+  border-color: rgba(6, 182, 212, 0.45);
+  background: rgba(6, 182, 212, 0.12);
+}
+.chip svg { width: 14px; height: 14px; flex-shrink: 0; }
 .workout-exercise-name {
   font-family: var(--font-display);
   font-weight: 700;
