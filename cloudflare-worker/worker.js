@@ -199,7 +199,10 @@ export default {
         ] },
       ], 0.2);
       if (out.errore) {
-        visionModelCache = null; // se il modello non andava bene, al prossimo giro se ne cerca un altro
+        // Un limite di richieste al minuto non dice niente sul modello: la
+        // scelta si azzera solo se l'errore riguarda il modello o le immagini,
+        // cosi' al giro dopo se ne cerca un altro davvero utile.
+        if (!/rate.?limit|too many requests/i.test(out.errore)) visionModelCache = null;
         return json({ error: 'Groq ha risposto con un errore.', detail: out.errore, model }, 502, origin);
       }
       return new Response(out.content, { headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } });
