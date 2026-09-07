@@ -71,6 +71,74 @@ function buildUserPrompt(p) {
 - Note, preferenze o infortuni: ${p.notes || 'nessuna'}`;
 }
 
+// ---------------------------------------------------------------------------
+// Sezione "Cibo": riconoscere un piatto da una foto e calcolarne i valori.
+// Sono due passaggi separati apposta. Il primo guarda la foto e propone gli
+// alimenti con una stima dei grammi; l'utente li corregge; il secondo calcola i
+// valori su quei grammi confermati. E' li' che si guadagna la precisione: da
+// una foto non si vedono ne' il peso reale ne' i condimenti.
+// ---------------------------------------------------------------------------
+const FOOD_PHOTO_PROMPT = `Sei un nutrizionista che guarda la foto di un piatto.
+Rispondi SOLO con un oggetto JSON valido, senza testo prima o dopo:
+{
+  "piatto": "nome del piatto in italiano",
+  "alimenti": [
+    { "nome": "alimento in italiano", "grammi": 120, "nota": "come hai stimato la quantita', massimo 6 parole" }
+  ],
+  "incerto": "cosa non riesci a distinguere o potrebbe essere nascosto, una frase"
+}
+Regole:
+- elenca gli alimenti separatamente (pasta, sugo, olio, formaggio...), non il piatto intero;
+- includi anche i condimenti che presumi ci siano, dicendolo in "nota";
+- "grammi" e' la tua stima migliore guardando le proporzioni nel piatto;
+- se la foto non contiene cibo, rispondi con "alimenti": [] e spiegalo in "incerto".`;
+
+const FOOD_VALUES_PROMPT = `Sei un nutrizionista. Ricevi una lista di alimenti con i grammi gia' confermati dall'utente.
+Rispondi SOLO con un oggetto JSON valido:
+{
+  "alimenti": [
+    { "nome": "", "grammi": 0, "kcal": 0, "proteine": 0, "carboidrati": 0, "grassi": 0, "fibre": 0 }
+  ],
+  "totale": { "kcal": 0, "proteine": 0, "carboidrati": 0, "grassi": 0, "fibre": 0 },
+  "nota": "una frase sull'affidabilita' della stima"
+}
+Regole:
+- usa valori nutrizionali medi per l'alimento come descritto nel nome;
+- i macronutrienti sono in grammi, arrotondati a una cifra decimale;
+- "totale" e' la somma esatta delle righe;
+- non aggiungere altri campi.`;
+
+// Il nome del modello con la vista non lo scriviamo qui: cambierebbe da solo
+// nel giro di qualche mese. Lo chiediamo a Groq e teniamo il primo che dal nome
+// risulta multimodale. La scelta resta in memoria finche' il Worker vive.
+const VISION_HINTS = ['vision', 'scout', 'maverick', 'llava', 'pixtral', 'qwen', 'llama-4', 'gemma-3'];
+let visionModelCache = null;
+
+async function pickVisionModel(apiKey) {
+  if (visionModelCache) return visionModelCache;
+  const res = await fetch('https://api.groq.com/openai/v1/models', {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const ids = (data.data || []).map((m) => m.id);
+  visionModelCache = ids.find((id) => VISION_HINTS.some((h) => id.toLowerCase().includes(h))) || null;
+  return visionModelCache;
+}
+
+async function askGroq(apiKey, model, messages, temperature) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages, temperature, response_format: { type: 'json_object' } }),
+  });
+  const testo = await res.text();
+  if (!res.ok) return { errore: testo };
+  const data = JSON.parse(testo);
+  const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  return content ? { content } : { errore: 'Risposta vuota dal modello.' };
+}
+
 function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': origin || '*',
@@ -113,6 +181,41 @@ export default {
       profile = await request.json();
     } catch (e) {
       return json({ error: 'Corpo della richiesta non e\' JSON valido.' }, 400, origin);
+    }
+
+    // La sezione "Cibo" manda un "task": senza, la richiesta e' quella storica
+    // del Virtual PT e prosegue come ha sempre fatto.
+    if (profile.task === 'cibo-foto') {
+      if (!profile.image) return json({ error: 'Manca la foto.' }, 400, origin);
+      const model = await pickVisionModel(groqApiKey);
+      if (!model) {
+        return json({ error: 'Nessun modello con la vista disponibile su questo account Groq.' }, 502, origin);
+      }
+      const out = await askGroq(groqApiKey, model, [
+        { role: 'system', content: FOOD_PHOTO_PROMPT },
+        { role: 'user', content: [
+          { type: 'text', text: 'Che cosa c\'e\' in questo piatto?' },
+          { type: 'image_url', image_url: { url: profile.image } },
+        ] },
+      ], 0.2);
+      if (out.errore) {
+        visionModelCache = null; // se il modello non andava bene, al prossimo giro se ne cerca un altro
+        return json({ error: 'Groq ha risposto con un errore.', detail: out.errore, model }, 502, origin);
+      }
+      return new Response(out.content, { headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } });
+    }
+
+    if (profile.task === 'cibo-valori') {
+      const alimenti = Array.isArray(profile.alimenti) ? profile.alimenti : [];
+      if (!alimenti.length) return json({ error: 'Nessun alimento da calcolare.' }, 400, origin);
+      const out = await askGroq(groqApiKey, MODEL, [
+        { role: 'system', content: FOOD_VALUES_PROMPT },
+        { role: 'user', content: JSON.stringify({ alimenti }) },
+      ], 0.2);
+      if (out.errore) {
+        return json({ error: 'Groq ha risposto con un errore.', detail: out.errore }, 502, origin);
+      }
+      return new Response(out.content, { headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } });
     }
 
     try {
