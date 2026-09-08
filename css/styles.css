@@ -753,78 +753,12 @@ a { color: inherit; text-decoration: none; }
 .settings-row-lg-icon svg { width: 24px; height: 24px; }
 .settings-row-lg-chevron { width: 20px; height: 20px; color: var(--text-tertiary); flex-shrink: 0; transform: rotate(-90deg); }
 
-/* ---------- Scorciatoia "Allenamenti" (impostazioni) ---------- */
-/* E' la porta d'ingresso a storico e grafico: deve staccarsi dalle righe
-   normali, quindi bordo a gradiente, alone colorato e due numeri in evidenza. */
-.stats-hero {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  padding: 16px;
-  border: 1px solid rgba(139, 92, 246, 0.45);
-  border-radius: var(--radius-lg);
-  /* Vetro come le altre righe, ma con una velatura dei colori d'accento sopra:
-     si stacca dal resto senza sacrificare la leggibilita' del testo. */
-  background:
-    linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(6, 182, 212, 0.14)),
-    var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
-  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.28);
-  color: var(--text-primary);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: transform .25s var(--ease-spring), box-shadow .3s var(--ease-out);
-}
-.stats-hero:active { transform: scale(0.985); }
-.stats-hero::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  top: -70%;
-  right: -15%;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.35), transparent 70%);
-  pointer-events: none;
-}
-.stats-hero-icon {
-  width: 50px; height: 50px;
-  flex-shrink: 0;
-  border-radius: var(--radius-md);
-  background: var(--accent-gradient);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8px 22px rgba(139, 92, 246, 0.45);
-}
-.stats-hero-icon svg { width: 26px; height: 26px; }
-.stats-hero-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.stats-hero-title { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; }
-.stats-hero-desc { font-size: 0.78rem; color: var(--text-secondary); }
-.stats-hero-metrics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.stats-hero-metrics span {
-  font-size: 0.72rem;
-  color: var(--text-secondary);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-pill);
-  padding: 3px 9px;
-}
-.stats-hero-metrics strong { color: var(--text-primary); font-weight: 800; }
-.stats-hero-chevron { width: 20px; height: 20px; color: var(--text-tertiary); flex-shrink: 0; transform: rotate(-90deg); }
-
 /* ---------- I tuoi record (impostazioni) ---------- */
 .settings-section-hint { font-size: 0.78rem; color: var(--text-secondary); margin: -4px 0 10px; }
 
 /* ---------- Misure del corpo ---------- */
 /* Due scorciatoie una sotto l'altra in cima a Progressi (Allenamenti, Misure) */
-.stats-hero-stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.choice-cards { display: flex; flex-direction: column; gap: var(--space-3); }
 
 /* Riepilogo in cima alla schermata Misure: peso attuale e massa corporea */
 .measure-tiles {
@@ -950,18 +884,17 @@ a { color: inherit; text-decoration: none; }
 .record-history-load { font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
 .record-history-row.is-current .record-history-load { color: var(--gold); }
 
-/* ---------- Virtual PT: la scelta all'ingresso ---------- */
+/* ---------- Card grandi di scelta (Virtual PT e Progressi) ---------- */
 .pt-hero { text-align: center; padding: 8px 4px 4px; }
 .pt-hero-badge {
-  width: 62px; height: 62px; margin: 0 auto 12px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; background: var(--accent-gradient); color: #fff;
-  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.45);
+  width: 84px; height: 84px; margin: 0 auto 14px;
+  display: block; border-radius: 50%;
+  box-shadow: 0 14px 38px rgba(124, 58, 237, 0.5);
 }
-.pt-hero-badge svg { width: 30px; height: 30px; }
+.pt-hero-badge svg { width: 100%; height: 100%; display: block; border-radius: 50%; }
 
-.pt-choices { display: flex; flex-direction: column; gap: 12px; margin: var(--space-5) 0 var(--space-4); }
-.pt-choice {
+.choice-cards { display: flex; flex-direction: column; gap: 12px; margin: var(--space-5) 0 var(--space-4); }
+.choice-card {
   position: relative; isolation: isolate; overflow: hidden;
   display: flex; align-items: flex-start; gap: var(--space-3);
   width: 100%; padding: 18px 16px; text-align: left;
@@ -969,40 +902,49 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-primary); font: inherit;
   transition: transform .25s var(--ease-spring), box-shadow .3s var(--ease-out);
 }
-.pt-choice:active { transform: scale(0.985); }
+.choice-card:active { transform: scale(0.985); }
 /* Un alone del proprio colore dietro ogni scelta: distingue i due mestieri e
    riempie la schermata senza aggiungere roba da leggere. */
-.pt-choice::before {
+.choice-card::before {
   content: ''; position: absolute; z-index: -1;
   top: -70%; right: -20%; width: 240px; height: 240px; border-radius: 50%;
   pointer-events: none;
 }
-.pt-choice-plan { border-color: rgba(139, 92, 246, 0.45); }
-.pt-choice-plan::before { background: radial-gradient(circle, rgba(139, 92, 246, 0.42), transparent 70%); }
-.pt-choice-food { border-color: rgba(6, 182, 212, 0.45); }
-.pt-choice-food::before { background: radial-gradient(circle, rgba(6, 182, 212, 0.42), transparent 70%); }
+.choice-card-plan { border-color: rgba(139, 92, 246, 0.45); }
+.choice-card-plan::before { background: radial-gradient(circle, rgba(139, 92, 246, 0.42), transparent 70%); }
+.choice-card-food { border-color: rgba(6, 182, 212, 0.45); }
+.choice-card-workouts { border-color: rgba(139, 92, 246, 0.45); }
+.choice-card-workouts::before { background: radial-gradient(circle, rgba(139, 92, 246, 0.42), transparent 70%); }
+.choice-card-measures { border-color: rgba(244, 63, 94, 0.4); }
+.choice-card-measures::before { background: radial-gradient(circle, rgba(244, 63, 94, 0.35), transparent 70%); }
+.choice-card-measures .choice-card-icon {
+  background: linear-gradient(135deg, #f43f5e, #f59e0b);
+  box-shadow: 0 8px 22px rgba(244, 63, 94, 0.4);
+}
+.choice-card-food::before { background: radial-gradient(circle, rgba(6, 182, 212, 0.42), transparent 70%); }
 
-.pt-choice-icon {
+.choice-card-icon {
   width: 54px; height: 54px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-md); background: var(--accent-gradient); color: #fff;
   box-shadow: 0 8px 22px rgba(139, 92, 246, 0.4);
 }
-.pt-choice-food .pt-choice-icon {
+.choice-card-food .choice-card-icon {
   background: linear-gradient(135deg, var(--accent-b), #34d399);
   box-shadow: 0 8px 22px rgba(6, 182, 212, 0.4);
 }
-.pt-choice-icon svg { width: 26px; height: 26px; }
-.pt-choice-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
-.pt-choice-title { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; }
-.pt-choice-desc { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45; }
-.pt-choice-meta {
-  align-self: flex-start; margin-top: 4px;
+.choice-card-icon svg { width: 26px; height: 26px; }
+.choice-card-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.choice-card-title { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; }
+.choice-card-desc { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45; }
+.choice-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.choice-card-meta > span {
   font-size: 0.7rem; color: var(--text-secondary);
   border: 1px solid var(--glass-border); background: var(--glass-bg);
   border-radius: var(--radius-pill); padding: 3px 9px;
 }
-.pt-choice-go {
+.choice-card-meta strong { color: var(--text-primary); font-weight: 800; }
+.choice-card-go {
   width: 20px; height: 20px; flex-shrink: 0; align-self: center;
   color: var(--text-tertiary); transform: rotate(-90deg);
 }

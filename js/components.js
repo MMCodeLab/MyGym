@@ -19,6 +19,31 @@ const ICONS = {
   chevronDown: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
   image: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  aiOrb: '<svg viewBox="0 0 100 100" width="100" height="100" fill="none" aria-hidden="true">'
+    + '<defs>'
+    + '<radialGradient id="aiOrbBg" cx="34%" cy="28%" r="78%">'
+    + '<stop offset="0%" stop-color="#c4b5fd"/><stop offset="45%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#1b1444"/>'
+    + '</radialGradient>'
+    + '<linearGradient id="aiOrbA" x1="0" y1="1" x2="1" y2="0">'
+    + '<stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#a78bfa"/>'
+    + '</linearGradient>'
+    + '<linearGradient id="aiOrbB" x1="0" y1="0" x2="1" y2="1">'
+    + '<stop offset="0%" stop-color="#f472b6"/><stop offset="100%" stop-color="#34d399"/>'
+    + '</linearGradient>'
+    + '<filter id="aiOrbGlow" x="-40%" y="-40%" width="180%" height="180%">'
+    + '<feGaussianBlur stdDeviation="2.6"/>'
+    + '</filter>'
+    + '<clipPath id="aiOrbClip"><circle cx="50" cy="50" r="47"/></clipPath>'
+    + '</defs>'
+    + '<circle cx="50" cy="50" r="47" fill="url(#aiOrbBg)"/>'
+    + '<g clip-path="url(#aiOrbClip)" filter="url(#aiOrbGlow)">'
+    + '<path d="M6 64 Q42 26 94 48" stroke="url(#aiOrbA)" stroke-width="7" stroke-linecap="round" opacity=".95"/>'
+    + '<path d="M22 12 Q52 54 72 96" stroke="url(#aiOrbB)" stroke-width="6" stroke-linecap="round" opacity=".9"/>'
+    + '<path d="M4 40 Q48 58 96 74" stroke="url(#aiOrbA)" stroke-width="5" stroke-linecap="round" opacity=".75"/>'
+    + '</g>'
+    + '<circle cx="49" cy="47" r="7" fill="#ffffff" filter="url(#aiOrbGlow)" opacity=".95"/>'
+    + '<circle cx="50" cy="50" r="47" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2"/>'
+    + '</svg>',
   cibo: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v5a2.6 2.6 0 0 0 5.2 0V3"/><path d="M9.6 3v4.6"/><path d="M9.6 10.6V21"/><path d="M16.4 3c2 1.4 2.8 3.6 2.8 5.8V13h-2.8z"/><path d="M17.8 13v8"/></svg>',
   fotocamera: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h2.2l1.3-2h6l1.3 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.6"/></svg>',
   stopwatch: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg>',
@@ -27,7 +52,7 @@ const ICONS = {
   flag: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"/><path d="M4 4h14l-3 4 3 4H4"/></svg>',
   progressi: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5 9 11l4 4 8-8"/><path d="M15 7.5h6v6"/></svg>',
   ruler: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="7.5" width="21" height="9" rx="2"/><path d="M6 7.5v3M9.5 7.5v4.5M13 7.5v3M16.5 7.5v4.5M20 7.5v3"/></svg>',
-  chartBar: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"/><path d="M2 20h20"/></svg>',
+  chartBar: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v15.5A1.5 1.5 0 0 0 5.5 20H21"/><path d="M7.5 16.2l3.6-4.4 2.9 2.3 4.6-6.6"/><circle cx="18.6" cy="7.5" r="1.6" fill="currentColor" stroke="none"/></svg>',
   sparkles: '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none"><path d="M12 2.5c.35 0 .66.23.76.57l1.28 4.3 4.3 1.28a.79.79 0 0 1 0 1.52l-4.3 1.28-1.28 4.3a.79.79 0 0 1-1.52 0l-1.28-4.3-4.3-1.28a.79.79 0 0 1 0-1.52l4.3-1.28 1.28-4.3c.1-.34.41-.57.76-.57Z"/><path d="M19 14.2c.28 0 .53.19.6.46l.5 1.75 1.75.5a.63.63 0 0 1 0 1.2l-1.75.5-.5 1.75a.63.63 0 0 1-1.2 0l-.5-1.75-1.75-.5a.63.63 0 0 1 0-1.2l1.75-.5.5-1.75a.63.63 0 0 1 .6-.46Z"/></svg>',
   instagram: '<svg viewBox="0 0 24 24" width="20" height="20"><defs><linearGradient id="igGradient" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#833AB4"/><stop offset="50%" stop-color="#E1306C"/><stop offset="100%" stop-color="#F77737"/></linearGradient></defs><rect x="1" y="1" width="22" height="22" rx="6" fill="url(#igGradient)"/><rect x="6" y="6" width="12" height="12" rx="3.5" fill="none" stroke="white" stroke-width="1.6"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="white" stroke-width="1.6"/><circle cx="16.4" cy="7.6" r="1" fill="white"/></svg>',
   github: '<svg viewBox="0 0 24 24" width="20" height="20"><rect x="1" y="1" width="22" height="22" rx="6" fill="#181717"/><path fill="white" transform="translate(4,4) scale(0.7)" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>',

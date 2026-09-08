@@ -126,30 +126,30 @@ function renderChoice(container) {
 
   container.innerHTML = `
     <div class="pt-hero">
-      <span class="pt-hero-badge">${icon('sparkles')}</span>
+      <span class="pt-hero-badge">${icon('aiOrb')}</span>
       <h1 class="section-title" style="margin:0">Virtual Personal Trainer</h1>
       <p class="section-subtitle" style="margin:4px 0 0">Un'intelligenza artificiale che ti prepara la scheda e legge i piatti che fotografi.</p>
     </div>
 
-    <div class="pt-choices">
-      <button class="pt-choice pt-choice-plan glass" id="choice-plan">
-        <span class="pt-choice-icon">${icon('allenamento')}</span>
-        <span class="pt-choice-body">
-          <span class="pt-choice-title">Crea una scheda</span>
-          <span class="pt-choice-desc">Racconti come ti alleni, quanti giorni hai e cosa hai a disposizione: l'IA prepara i giorni con gli esercizi, pronti da salvare.</span>
-          <span class="pt-choice-meta">${notaScheda}</span>
+    <div class="choice-cards">
+      <button class="choice-card choice-card-plan glass" id="choice-plan">
+        <span class="choice-card-icon">${icon('allenamento')}</span>
+        <span class="choice-card-body">
+          <span class="choice-card-title">Crea una scheda</span>
+          <span class="choice-card-desc">Racconti come ti alleni, quanti giorni hai e cosa hai a disposizione: l'IA prepara i giorni con gli esercizi, pronti da salvare.</span>
+          <span class="choice-card-meta"><span>${notaScheda}</span></span>
         </span>
-        <span class="pt-choice-go">${icon('chevronDown')}</span>
+        <span class="choice-card-go">${icon('chevronDown')}</span>
       </button>
 
-      <button class="pt-choice pt-choice-food glass" id="choice-food">
-        <span class="pt-choice-icon">${icon('cibo')}</span>
-        <span class="pt-choice-body">
-          <span class="pt-choice-title">Informazioni sul cibo</span>
-          <span class="pt-choice-desc">Fotografi il piatto, l'IA dice cosa contiene, tu correggi i grammi e ottieni calorie e valori nutrizionali.</span>
-          <span class="pt-choice-meta">${notaCibo}</span>
+      <button class="choice-card choice-card-food glass" id="choice-food">
+        <span class="choice-card-icon">${icon('cibo')}</span>
+        <span class="choice-card-body">
+          <span class="choice-card-title">Informazioni sul cibo</span>
+          <span class="choice-card-desc">Fotografi il piatto, l'IA dice cosa contiene, tu correggi i grammi e ottieni calorie e valori nutrizionali.</span>
+          <span class="choice-card-meta"><span>${notaCibo}</span></span>
         </span>
-        <span class="pt-choice-go">${icon('chevronDown')}</span>
+        <span class="choice-card-go">${icon('chevronDown')}</span>
       </button>
     </div>
 

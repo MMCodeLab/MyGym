@@ -32,21 +32,21 @@ function statsHeroHtml() {
   const { workouts } = store.get();
   const metrics = workouts.length
     ? `
-      <span class="stats-hero-metrics">
+      <span class="choice-card-meta">
         <span><strong>${workouts.length}</strong> allenament${workouts.length === 1 ? 'o' : 'i'}</span>
         <span><strong>${formatKg(Math.round(totalVolume(workouts)))}</strong> kg sollevati</span>
       </span>`
     : '';
 
   return `
-    <button class="stats-hero" id="workouts-row">
-      <span class="stats-hero-icon">${icon('chartBar')}</span>
-      <span class="stats-hero-text">
-        <span class="stats-hero-title">Allenamenti</span>
-        <span class="stats-hero-desc">${workouts.length ? 'Storico completo e grafico dei progressi' : 'Qui compariranno storico e grafico dei progressi'}</span>
+    <button class="choice-card choice-card-workouts glass" id="workouts-row">
+      <span class="choice-card-icon">${icon('chartBar')}</span>
+      <span class="choice-card-body">
+        <span class="choice-card-title">Allenamenti</span>
+        <span class="choice-card-desc">${workouts.length ? 'Storico completo e grafico dei progressi' : 'Qui compariranno storico e grafico dei progressi'}</span>
         ${metrics}
       </span>
-      <span class="stats-hero-chevron">${icon('chevronDown')}</span>
+      <span class="choice-card-go">${icon('chevronDown')}</span>
     </button>
   `;
 }
@@ -65,7 +65,7 @@ function measuresHeroHtml() {
   if (measurements.length) {
     const tracked = trackedMetricCount(measurements);
     metrics = `
-      <span class="stats-hero-metrics">
+      <span class="choice-card-meta">
         ${weight ? `<span><strong>${formatKg(weight.value)}</strong> kg oggi</span>` : ''}
         <span><strong>${measurements.length}</strong> misurazion${measurements.length === 1 ? 'e' : 'i'}</span>
         <span><strong>${tracked}</strong> misur${tracked === 1 ? 'a' : 'e'} seguite</span>
@@ -73,14 +73,14 @@ function measuresHeroHtml() {
   }
 
   return `
-    <button class="stats-hero" id="measures-row">
-      <span class="stats-hero-icon">${icon('ruler')}</span>
-      <span class="stats-hero-text">
-        <span class="stats-hero-title">Misure</span>
-        <span class="stats-hero-desc">${measurements.length ? 'Peso, altezza e circonferenze, con il loro andamento' : "Segna peso, altezza e circonferenze e guardane l'andamento"}</span>
+    <button class="choice-card choice-card-measures glass" id="measures-row">
+      <span class="choice-card-icon">${icon('ruler')}</span>
+      <span class="choice-card-body">
+        <span class="choice-card-title">Misure</span>
+        <span class="choice-card-desc">${measurements.length ? 'Peso, altezza e circonferenze, con il loro andamento' : "Segna peso, altezza e circonferenze e guardane l'andamento"}</span>
         ${metrics}
       </span>
-      <span class="stats-hero-chevron">${icon('chevronDown')}</span>
+      <span class="choice-card-go">${icon('chevronDown')}</span>
     </button>
   `;
 }
@@ -472,7 +472,7 @@ function render(container) {
     <h1 class="section-title">Progressi</h1>
     <p class="section-subtitle">Storico, grafici e record personali.</p>
 
-    <div class="page-section stats-hero-stack">
+    <div class="page-section choice-cards">
       ${statsHeroHtml()}
       ${measuresHeroHtml()}
     </div>
