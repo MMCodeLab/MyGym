@@ -19,30 +19,33 @@ const ICONS = {
   chevronDown: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
   image: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  // Sfera dell'IA: anelli concentrici, tacche e nucleo acceso, come i quadranti
+  // olografici da film. Disegnata qui, non ripresa da nessuno. Gli anelli
+  // girano piano: l'animazione sta nel CSS, cosi' con "riduci movimento"
+  // attivo si ferma da sola insieme a tutte le altre.
   aiOrb: '<svg viewBox="0 0 100 100" width="100" height="100" fill="none" aria-hidden="true">'
     + '<defs>'
-    + '<radialGradient id="aiOrbBg" cx="34%" cy="28%" r="78%">'
-    + '<stop offset="0%" stop-color="#c4b5fd"/><stop offset="45%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#1b1444"/>'
+    + '<radialGradient id="aiOrbBg" cx="50%" cy="45%" r="70%">'
+    + '<stop offset="0%" stop-color="#123a5c"/><stop offset="60%" stop-color="#0d1b3a"/><stop offset="100%" stop-color="#070b1c"/>'
     + '</radialGradient>'
-    + '<linearGradient id="aiOrbA" x1="0" y1="1" x2="1" y2="0">'
-    + '<stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#a78bfa"/>'
-    + '</linearGradient>'
-    + '<linearGradient id="aiOrbB" x1="0" y1="0" x2="1" y2="1">'
-    + '<stop offset="0%" stop-color="#f472b6"/><stop offset="100%" stop-color="#34d399"/>'
-    + '</linearGradient>'
-    + '<filter id="aiOrbGlow" x="-40%" y="-40%" width="180%" height="180%">'
-    + '<feGaussianBlur stdDeviation="2.6"/>'
+    + '<radialGradient id="aiOrbCore" cx="50%" cy="50%" r="50%">'
+    + '<stop offset="0%" stop-color="#ffffff"/><stop offset="35%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="rgba(34,211,238,0)"/>'
+    + '</radialGradient>'
+    + '<filter id="aiOrbGlow" x="-50%" y="-50%" width="200%" height="200%">'
+    + '<feGaussianBlur stdDeviation="1.8"/>'
     + '</filter>'
-    + '<clipPath id="aiOrbClip"><circle cx="50" cy="50" r="47"/></clipPath>'
     + '</defs>'
     + '<circle cx="50" cy="50" r="47" fill="url(#aiOrbBg)"/>'
-    + '<g clip-path="url(#aiOrbClip)" filter="url(#aiOrbGlow)">'
-    + '<path d="M6 64 Q42 26 94 48" stroke="url(#aiOrbA)" stroke-width="7" stroke-linecap="round" opacity=".95"/>'
-    + '<path d="M22 12 Q52 54 72 96" stroke="url(#aiOrbB)" stroke-width="6" stroke-linecap="round" opacity=".9"/>'
-    + '<path d="M4 40 Q48 58 96 74" stroke="url(#aiOrbA)" stroke-width="5" stroke-linecap="round" opacity=".75"/>'
+    + '<circle cx="50" cy="50" r="47" stroke="rgba(34,211,238,.5)" stroke-width="1.6"/>'
+    + '<g filter="url(#aiOrbGlow)">'
+    + '<circle class="ai-orb-ring ai-orb-ring-a" cx="50" cy="50" r="39" stroke="#22d3ee" stroke-width="2" stroke-dasharray="3 8" opacity=".9"/>'
+    + '<circle class="ai-orb-ring ai-orb-ring-b" cx="50" cy="50" r="30" stroke="#a78bfa" stroke-width="1.8" stroke-dasharray="24 16" opacity=".85"/>'
+    + '<path class="ai-orb-ring ai-orb-ring-a" d="M50 12a38 38 0 0 1 33 19" stroke="#67e8f9" stroke-width="3" stroke-linecap="round" opacity=".95"/>'
+    + '<path class="ai-orb-ring ai-orb-ring-a" d="M50 88a38 38 0 0 1-33-19" stroke="#67e8f9" stroke-width="3" stroke-linecap="round" opacity=".95"/>'
     + '</g>'
-    + '<circle cx="49" cy="47" r="7" fill="#ffffff" filter="url(#aiOrbGlow)" opacity=".95"/>'
-    + '<circle cx="50" cy="50" r="47" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2"/>'
+    + '<circle cx="50" cy="50" r="21" stroke="rgba(125,211,252,.4)" stroke-width="1"/>'
+    + '<circle cx="50" cy="50" r="13" fill="url(#aiOrbCore)" filter="url(#aiOrbGlow)"/>'
+    + '<circle cx="50" cy="50" r="3.6" fill="#ffffff"/>'
     + '</svg>',
   cibo: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v5a2.6 2.6 0 0 0 5.2 0V3"/><path d="M9.6 3v4.6"/><path d="M9.6 10.6V21"/><path d="M16.4 3c2 1.4 2.8 3.6 2.8 5.8V13h-2.8z"/><path d="M17.8 13v8"/></svg>',
   fotocamera: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h2.2l1.3-2h6l1.3 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.6"/></svg>',

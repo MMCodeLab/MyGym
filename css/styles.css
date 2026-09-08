@@ -887,11 +887,22 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Card grandi di scelta (Virtual PT e Progressi) ---------- */
 .pt-hero { text-align: center; padding: 8px 4px 4px; }
 .pt-hero-badge {
-  width: 84px; height: 84px; margin: 0 auto 14px;
+  width: 92px; height: 92px; margin: 0 auto 14px;
   display: block; border-radius: 50%;
-  box-shadow: 0 14px 38px rgba(124, 58, 237, 0.5);
+  box-shadow: 0 0 34px rgba(34, 211, 238, 0.45), 0 14px 38px rgba(12, 20, 45, 0.6);
 }
 .pt-hero-badge svg { width: 100%; height: 100%; display: block; border-radius: 50%; }
+/* Gli anelli ruotano lentamente in versi opposti: e' quel po' di movimento che
+   fa sembrare la sfera accesa invece che disegnata. La regola globale di
+   "riduci movimento" li ferma insieme a tutte le altre animazioni. */
+.ai-orb-ring { transform-box: fill-box; transform-origin: center; }
+.ai-orb-ring-a { animation: ai-orb-spin 14s linear infinite; }
+.ai-orb-ring-b { animation: ai-orb-spin 22s linear infinite reverse; }
+
+@keyframes ai-orb-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 .choice-cards { display: flex; flex-direction: column; gap: 12px; margin: var(--space-5) 0 var(--space-4); }
 .choice-card {
