@@ -110,39 +110,57 @@ function bindUnitToggle(body, idPrefix, onSelect) {
 // ---------- Schermata 1: form dati ----------
 
 function renderChoice(container) {
+  const { days, meals } = store.get();
+  const oggi = new Date().toISOString().slice(0, 10);
+  const pastiOggi = (meals || []).filter((m) => m.date.slice(0, 10) === oggi);
+  const kcalOggi = pastiOggi.reduce((sum, m) => sum + (Number(m.totals.kcal) || 0), 0);
+
+  // Sotto ogni scelta una riga di contesto: dice a colpo d'occhio a che punto
+  // sei, ed e' anche quello che riempie una schermata altrimenti spoglia.
+  const notaScheda = days.length
+    ? `${days.length} giorn${days.length === 1 ? 'o' : 'i'} già in programma`
+    : 'Non hai ancora nessun giorno: si parte da qui';
+  const notaCibo = pastiOggi.length
+    ? `${Math.round(kcalOggi).toLocaleString('it-IT')} kcal oggi · ${pastiOggi.length} past${pastiOggi.length === 1 ? 'o' : 'i'}`
+    : 'Oggi non hai ancora segnato niente';
+
   container.innerHTML = `
-    <div class="flex items-center gap-2">
-      <span style="width:26px;height:26px;color:var(--accent-a)">${icon('sparkles')}</span>
+    <div class="pt-hero">
+      <span class="pt-hero-badge">${icon('sparkles')}</span>
       <h1 class="section-title" style="margin:0">Virtual Personal Trainer</h1>
+      <p class="section-subtitle" style="margin:4px 0 0">Un'intelligenza artificiale che ti prepara la scheda e legge i piatti che fotografi.</p>
     </div>
-    <p class="section-subtitle">Con cosa ti do una mano?</p>
 
-    <div class="page-section stats-hero-stack">
-      <button class="stats-hero" id="choice-plan">
-        <span class="stats-hero-icon">${icon('allenamento')}</span>
-        <span class="stats-hero-text">
-          <span class="stats-hero-title">Crea una scheda</span>
-          <span class="stats-hero-desc">Racconti come ti alleni e l'IA prepara i giorni con gli esercizi, pronti da salvare</span>
+    <div class="pt-choices">
+      <button class="pt-choice pt-choice-plan glass" id="choice-plan">
+        <span class="pt-choice-icon">${icon('allenamento')}</span>
+        <span class="pt-choice-body">
+          <span class="pt-choice-title">Crea una scheda</span>
+          <span class="pt-choice-desc">Racconti come ti alleni, quanti giorni hai e cosa hai a disposizione: l'IA prepara i giorni con gli esercizi, pronti da salvare.</span>
+          <span class="pt-choice-meta">${notaScheda}</span>
         </span>
-        <span class="stats-hero-chevron">${icon('chevronDown')}</span>
+        <span class="pt-choice-go">${icon('chevronDown')}</span>
       </button>
 
-      <button class="stats-hero" id="choice-food">
-        <span class="stats-hero-icon">${icon('cibo')}</span>
-        <span class="stats-hero-text">
-          <span class="stats-hero-title">Informazioni sul cibo</span>
-          <span class="stats-hero-desc">Fotografi il piatto e scopri quante calorie ha, correggendo tu i grammi</span>
+      <button class="pt-choice pt-choice-food glass" id="choice-food">
+        <span class="pt-choice-icon">${icon('cibo')}</span>
+        <span class="pt-choice-body">
+          <span class="pt-choice-title">Informazioni sul cibo</span>
+          <span class="pt-choice-desc">Fotografi il piatto, l'IA dice cosa contiene, tu correggi i grammi e ottieni calorie e valori nutrizionali.</span>
+          <span class="pt-choice-meta">${notaCibo}</span>
         </span>
-        <span class="stats-hero-chevron">${icon('chevronDown')}</span>
+        <span class="pt-choice-go">${icon('chevronDown')}</span>
       </button>
     </div>
+
+    <p class="pt-disclaimer">Le risposte le scrive un'intelligenza artificiale: sono un buon punto di partenza, non una verità. Dai sempre un'occhiata ai numeri prima di fidarti, e sui carichi ascolta il tuo corpo.</p>
   `;
 
   container.querySelector('#choice-plan').addEventListener('click', () => {
     screen = 'form';
     render(container);
   });
-  container.querySelector('#choice-food').addEventListener('click', () => navigate('#/cibo/pt'));
+  container.querySelector('#choice-food').addEventListener('click', () => navigate('#/cibo'));
 }
 
 function renderForm(container) {

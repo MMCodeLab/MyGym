@@ -1,7 +1,7 @@
 // Script classico (non un modulo ES): espone tutto su window.MyGym.views.progress.
 (function () {
 
-const { store, MUSCLE_GROUPS, icon, escapeHtml, navigate, BODY_METRICS } = window.MyGym;
+const { store, MUSCLE_GROUPS, icon, escapeHtml, navigate, showToast, confirmAction, BODY_METRICS } = window.MyGym;
 
 // ---------- Scorciatoia allo storico + record personali ----------
 
@@ -85,30 +85,96 @@ function measuresHeroHtml() {
   `;
 }
 
-// Card d'ingresso alla sezione Cibo, con i totali di oggi se ci sono.
-function foodHeroHtml() {
-  const oggi = new Date().toISOString().slice(0, 10);
-  const meals = store.getMealsByDay(oggi);
-  const kcal = meals.reduce((sum, m) => sum + (Number(m.totals.kcal) || 0), 0);
+// ---------- Diario alimentare ----------
+// Qui si guarda soltanto: le foto si fanno dal Virtual PT, che e' il posto
+// dove vive l'intelligenza artificiale. In Progressi resta il consuntivo.
 
-  const metrics = meals.length
-    ? `<span class="stats-hero-metrics">
-         <span><strong>${Math.round(kcal).toLocaleString('it-IT')}</strong> kcal oggi</span>
-         <span><strong>${meals.length}</strong> past${meals.length === 1 ? 'o' : 'i'}</span>
-       </span>`
-    : '';
+function mealTotals(meals) {
+  return meals.reduce((acc, m) => {
+    ['kcal', 'proteine', 'carboidrati', 'grassi', 'fibre'].forEach((k) => {
+      acc[k] = (acc[k] || 0) + (Number(m.totals[k]) || 0);
+    });
+    return acc;
+  }, {});
+}
+
+function foodTotalsHtml(totale, etichetta) {
+  return `
+    <div class="food-totals">
+      <div class="food-tot kcal">
+        <div class="v">${Math.round(totale.kcal || 0).toLocaleString('it-IT')} kcal</div>
+        <div class="l">${etichetta}</div>
+      </div>
+      <div class="food-tot"><div class="v">${formatKg(totale.proteine)} g</div><div class="l">proteine</div></div>
+      <div class="food-tot"><div class="v">${formatKg(totale.carboidrati)} g</div><div class="l">carboidrati</div></div>
+      <div class="food-tot"><div class="v">${formatKg(totale.grassi)} g</div><div class="l">grassi</div></div>
+      <div class="food-tot"><div class="v">${formatKg(totale.fibre)} g</div><div class="l">fibre</div></div>
+    </div>`;
+}
+
+function formatDayLabel(dayKey) {
+  const oggi = new Date().toISOString().slice(0, 10);
+  if (dayKey === oggi) return 'Oggi';
+  const ieri = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (dayKey === ieri) return 'Ieri';
+  return new Date(`${dayKey}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'short' });
+}
+
+function foodDiaryHtml() {
+  const giorni = store.getMealDays();
+
+  if (!giorni.length) {
+    return `
+      <div class="page-section">
+        <h3>Diario alimentare</h3>
+        <div class="settings-row glass">
+          <div class="settings-row-text">
+            <div class="settings-row-title">Ancora nessun pasto</div>
+            <div class="settings-row-desc">Fotografa un piatto da "Virtual PT → Informazioni sul cibo": qui restano le calorie e i valori di quello che hai mangiato, giorno per giorno.</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  const oggi = new Date().toISOString().slice(0, 10);
+  const mealsOggi = store.getMealsByDay(oggi);
+  const altriGiorni = giorni.filter((g) => g !== oggi).slice(0, 6);
 
   return `
-    <button class="stats-hero" id="food-row">
-      <span class="stats-hero-icon">${icon('cibo')}</span>
-      <span class="stats-hero-text">
-        <span class="stats-hero-title">Cibo</span>
-        <span class="stats-hero-desc">${meals.length ? 'Il diario di oggi e una nuova foto' : 'Fotografa un piatto e scopri quante calorie ha'}</span>
-        ${metrics}
-      </span>
-      <span class="stats-hero-chevron">${icon('chevronDown')}</span>
-    </button>
-  `;
+    <div class="page-section">
+      <h3>Diario alimentare</h3>
+      <p class="settings-section-hint">Le foto si fanno dal Virtual PT: qui c'è il conto di quello che hai mangiato.</p>
+
+      <div class="card glass">
+        ${foodTotalsHtml(mealTotals(mealsOggi), mealsOggi.length
+          ? `oggi · ${mealsOggi.length} past${mealsOggi.length === 1 ? 'o' : 'i'}`
+          : 'oggi · ancora niente')}
+        ${mealsOggi.length ? `
+          <div class="food-list mt-3">
+            ${mealsOggi.map((m) => `
+              <div class="food-row">
+                <span class="food-name">${escapeHtml(m.name)}<small>${new Date(m.date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} · ${m.items.map((i) => escapeHtml(i.nome)).join(', ')}</small></span>
+                <span class="food-kcal">${Math.round(m.totals.kcal || 0)} kcal</span>
+                <button class="icon-btn danger" data-delete-meal="${m.id}" aria-label="Elimina ${escapeHtml(m.name)}">${icon('trash')}</button>
+              </div>`).join('')}
+          </div>` : ''}
+      </div>
+
+      ${altriGiorni.length ? `
+        <div class="card glass">
+          <div class="food-list">
+            ${altriGiorni.map((g) => {
+              const meals = store.getMealsByDay(g);
+              const t = mealTotals(meals);
+              return `
+                <div class="food-row food-row-readonly">
+                  <span class="food-name">${formatDayLabel(g)}<small>${meals.length} past${meals.length === 1 ? 'o' : 'i'} · P ${formatKg(t.proteine)} · C ${formatKg(t.carboidrati)} · G ${formatKg(t.grassi)}</small></span>
+                  <span class="food-kcal">${Math.round(t.kcal || 0)} kcal</span>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
+    </div>`;
 }
 
 function recordHistoryRowHtml(item, isCurrent) {
@@ -409,16 +475,32 @@ function render(container) {
     <div class="page-section stats-hero-stack">
       ${statsHeroHtml()}
       ${measuresHeroHtml()}
-      ${foodHeroHtml()}
     </div>
 
+    ${foodDiaryHtml()}
     ${recordsSectionHtml()}
     ${muscleMapHtml()}
   `;
 
   container.querySelector('#workouts-row').addEventListener('click', () => navigate('#/storico'));
   container.querySelector('#measures-row').addEventListener('click', () => navigate('#/misure'));
-  container.querySelector('#food-row').addEventListener('click', () => navigate('#/cibo'));
+  container.querySelectorAll('[data-delete-meal]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const meal = store.getMealsByDay(new Date().toISOString().slice(0, 10))
+        .find((m) => m.id === btn.dataset.deleteMeal);
+      if (!meal) return;
+      confirmAction({
+        title: 'Eliminare il pasto?',
+        message: `"${meal.name}" (${Math.round(meal.totals.kcal || 0)} kcal) verrà tolto dal diario di oggi.`,
+        confirmLabel: 'Elimina',
+        onConfirm: () => {
+          store.deleteMeal(meal.id);
+          showToast('Pasto eliminato');
+          render(container);
+        },
+      });
+    });
+  });
 
   container.querySelectorAll('[data-muscle]').forEach((el) => {
     el.addEventListener('click', () => {
