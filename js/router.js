@@ -139,10 +139,15 @@ function route() {
     routeKey = 'progressi';
     renderFn = views.progress.render;
   } else if (parts[0] === 'cibo') {
-    // Anche il cibo e' un dettaglio di "Progressi": la voce evidenziata resta
-    // quella, come per misure e storico.
-    routeKey = 'progressi';
+    // Il cibo si raggiunge da due strade: da "Progressi" e dal Virtual PT.
+    // La seconda si scrive "#/cibo/pt", cosi' resta evidenziata la voce giusta
+    // nella barra in basso e l'indietro riporta da dove si era arrivati.
+    routeKey = parts[1] === 'pt' ? 'pt' : 'progressi';
     renderFn = views.food.render;
+    // Sempre esplicito, mai undefined: la vista distingue "aperta da qui" da
+    // "ridisegnata da sola", e senza questo l'indietro resterebbe puntato alla
+    // provenienza della volta prima.
+    arg = parts[1] === 'pt' ? 'pt' : 'progressi';
   } else if (parts[0] === 'misure') {
     // Come lo storico: le misure sono un dettaglio di "Progressi", quindi la
     // voce evidenziata nella barra in basso resta quella.

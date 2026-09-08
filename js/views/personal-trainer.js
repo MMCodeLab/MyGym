@@ -17,7 +17,10 @@ const WEIGHT_UNITS = ['kg', 'lbs'];
 const HEIGHT_UNITS = ['cm', 'ft'];
 
 let currentContainer = null;
-let screen = 'form'; // 'form' | 'loading' | 'result' | 'error'
+// 'scelta' e' la prima cosa che si vede: il Virtual PT fa due mestieri, la
+// scheda di allenamento e le informazioni sul cibo, e conviene chiederlo
+// invece di far indovinare.
+let screen = 'scelta'; // 'scelta' | 'form' | 'loading' | 'result' | 'error'
 let lastPlan = null;
 let lastError = null;
 
@@ -106,11 +109,47 @@ function bindUnitToggle(body, idPrefix, onSelect) {
 
 // ---------- Schermata 1: form dati ----------
 
-function renderForm(container) {
+function renderChoice(container) {
   container.innerHTML = `
     <div class="flex items-center gap-2">
       <span style="width:26px;height:26px;color:var(--accent-a)">${icon('sparkles')}</span>
       <h1 class="section-title" style="margin:0">Virtual Personal Trainer</h1>
+    </div>
+    <p class="section-subtitle">Con cosa ti do una mano?</p>
+
+    <div class="page-section stats-hero-stack">
+      <button class="stats-hero" id="choice-plan">
+        <span class="stats-hero-icon">${icon('allenamento')}</span>
+        <span class="stats-hero-text">
+          <span class="stats-hero-title">Crea una scheda</span>
+          <span class="stats-hero-desc">Racconti come ti alleni e l'IA prepara i giorni con gli esercizi, pronti da salvare</span>
+        </span>
+        <span class="stats-hero-chevron">${icon('chevronDown')}</span>
+      </button>
+
+      <button class="stats-hero" id="choice-food">
+        <span class="stats-hero-icon">${icon('cibo')}</span>
+        <span class="stats-hero-text">
+          <span class="stats-hero-title">Informazioni sul cibo</span>
+          <span class="stats-hero-desc">Fotografi il piatto e scopri quante calorie ha, correggendo tu i grammi</span>
+        </span>
+        <span class="stats-hero-chevron">${icon('chevronDown')}</span>
+      </button>
+    </div>
+  `;
+
+  container.querySelector('#choice-plan').addEventListener('click', () => {
+    screen = 'form';
+    render(container);
+  });
+  container.querySelector('#choice-food').addEventListener('click', () => navigate('#/cibo/pt'));
+}
+
+function renderForm(container) {
+  container.innerHTML = `
+    <div class="flex items-center gap-3">
+      <button class="icon-btn" id="pt-back-btn" aria-label="Indietro">${icon('back')}</button>
+      <h1 class="section-title" style="margin:0">Crea una scheda</h1>
     </div>
     <p class="section-subtitle">Racconta qualcosa di te: un'IA prepara una scheda su misura.</p>
 
@@ -184,6 +223,11 @@ function renderForm(container) {
     <button class="btn btn-primary btn-block mt-2" id="pt-generate-btn">${icon('sparkles')} Genera la mia scheda</button>
     <p class="text-secondary text-center" style="font-size:0.72rem;margin-top:10px">La scheda è generata da un'intelligenza artificiale: rivedila con buon senso, specialmente in caso di patologie o infortuni.</p>
   `;
+
+  container.querySelector('#pt-back-btn').addEventListener('click', () => {
+    screen = 'scelta';
+    render(container);
+  });
 
   container.querySelector('#pt-name').addEventListener('change', (e) => { formState.name = e.target.value; });
   container.querySelector('#pt-surname').addEventListener('change', (e) => { formState.surname = e.target.value; });
@@ -405,7 +449,8 @@ function renderResult(container, plan) {
 
 function render(container) {
   currentContainer = container;
-  if (screen === 'loading') renderLoading(container);
+  if (screen === 'scelta') renderChoice(container);
+  else if (screen === 'loading') renderLoading(container);
   else if (screen === 'result' && lastPlan) renderResult(container, lastPlan);
   else if (screen === 'error') renderError(container);
   else renderForm(container);

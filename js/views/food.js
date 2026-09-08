@@ -15,6 +15,9 @@ const { store, icon, escapeHtml, showToast, confirmAction, navigate } = window.M
 const WORKER_URL = 'https://mygym-pt.minnitijunior.workers.dev/';
 
 let currentContainer = null;
+// La sezione si apre da Progressi oppure dal Virtual PT: l'indietro deve
+// riportare dove si era, non sempre nello stesso posto.
+let backTo = '#/progressi';
 let photo = null;      // data URL della foto compressa
 let dish = '';         // nome del piatto proposto dall'AI
 let uncertain = '';    // cosa l'AI non ha saputo distinguere
@@ -243,8 +246,10 @@ function diaryHtml() {
 
 // ---------- Render ----------
 
-function render(container) {
+function render(container, origin) {
   currentContainer = container;
+  if (origin === 'pt') backTo = '#/pt';
+  else if (origin !== undefined) backTo = '#/progressi';
 
   container.innerHTML = `
     <div class="flex items-center gap-3">
@@ -266,7 +271,7 @@ function render(container) {
     <p class="food-privacy">La foto viene inviata a Groq per l'analisi e non viene conservata da nessuna parte: nel diario restano solo gli alimenti con i grammi e i valori calcolati.</p>
   `;
 
-  container.querySelector('#back-btn').addEventListener('click', () => navigate('#/progressi'));
+  container.querySelector('#back-btn').addEventListener('click', () => navigate(backTo));
 
   const input = container.querySelector('#photo-input');
   container.querySelector('#pick-photo').addEventListener('click', () => input.click());
