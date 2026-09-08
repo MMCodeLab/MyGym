@@ -203,7 +203,7 @@ function render(container) {
       <div class="settings-row glass">
         <div class="settings-row-text">
           <div class="settings-row-title">MyGym</div>
-          <div class="settings-row-desc">Versione 0.1.0 — i tuoi dati restano solo su questo dispositivo.</div>
+          <div class="settings-row-desc">Versione 0.1.0 — i tuoi dati restano su questo dispositivo. Fanno eccezione le richieste al Virtual PT e le foto della sezione Cibo, che vengono inviate all'AI per essere elaborate e non vengono conservate.</div>
         </div>
       </div>
     </div>

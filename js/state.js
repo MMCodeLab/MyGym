@@ -102,7 +102,7 @@ function emptySet(kind) {
 }
 
 function defaultState() {
-  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90, sex: 'maschio' };
+  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90, sex: 'maschio', meals: [] };
 }
 
 const MAX_MUSCLE_GROUPS_PER_EXERCISE = 3;
@@ -133,6 +133,7 @@ function load() {
     // I backup fatti prima delle misure non hanno il campo: senza questa riga
     // resterebbe undefined e addMeasurement fallirebbe.
     merged.measurements = merged.measurements || [];
+    merged.meals = merged.meals || [];
     return merged;
   } catch (e) {
     console.warn('Impossibile leggere i dati salvati, riparto da zero.', e);
@@ -588,6 +589,36 @@ const store = {
     }
   },
   clearLastPosition: clearUiPosition,
+
+  // ---- Pasti (sezione Cibo) ----
+  // Della foto non si tiene niente: solo gli alimenti con i grammi confermati e
+  // i valori calcolati. Una foto in localStorage riempirebbe lo spazio in
+  // pochi pasti, e per rivedere il piatto basta la galleria del telefono.
+  addMeal({ name, items, totals }) {
+    const meal = {
+      id: uid(),
+      date: new Date().toISOString(),
+      name: (name || 'Pasto').trim(),
+      items: (items || []).map((i) => ({ nome: i.nome, grammi: i.grammi })),
+      totals: totals || {},
+    };
+    state.meals.push(meal);
+    save();
+    return meal;
+  },
+  deleteMeal(id) {
+    state.meals = state.meals.filter((m) => m.id !== id);
+    save();
+  },
+  // Pasti di un giorno (chiave "AAAA-MM-GG"), dal piu' recente
+  getMealsByDay(dayKey) {
+    return state.meals
+      .filter((m) => m.date.slice(0, 10) === dayKey)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  },
+  getMealDays() {
+    return [...new Set(state.meals.map((m) => m.date.slice(0, 10)))].sort().reverse();
+  },
 
   // ---- Backup ----
   exportData() {

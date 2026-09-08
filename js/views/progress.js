@@ -85,6 +85,32 @@ function measuresHeroHtml() {
   `;
 }
 
+// Card d'ingresso alla sezione Cibo, con i totali di oggi se ci sono.
+function foodHeroHtml() {
+  const oggi = new Date().toISOString().slice(0, 10);
+  const meals = store.getMealsByDay(oggi);
+  const kcal = meals.reduce((sum, m) => sum + (Number(m.totals.kcal) || 0), 0);
+
+  const metrics = meals.length
+    ? `<span class="stats-hero-metrics">
+         <span><strong>${Math.round(kcal).toLocaleString('it-IT')}</strong> kcal oggi</span>
+         <span><strong>${meals.length}</strong> past${meals.length === 1 ? 'o' : 'i'}</span>
+       </span>`
+    : '';
+
+  return `
+    <button class="stats-hero" id="food-row">
+      <span class="stats-hero-icon">${icon('cibo')}</span>
+      <span class="stats-hero-text">
+        <span class="stats-hero-title">Cibo</span>
+        <span class="stats-hero-desc">${meals.length ? 'Il diario di oggi e una nuova foto' : 'Fotografa un piatto e scopri quante calorie ha'}</span>
+        ${metrics}
+      </span>
+      <span class="stats-hero-chevron">${icon('chevronDown')}</span>
+    </button>
+  `;
+}
+
 function recordHistoryRowHtml(item, isCurrent) {
   return `
     <div class="record-history-row${isCurrent ? ' is-current' : ''}">
@@ -383,6 +409,7 @@ function render(container) {
     <div class="page-section stats-hero-stack">
       ${statsHeroHtml()}
       ${measuresHeroHtml()}
+      ${foodHeroHtml()}
     </div>
 
     ${recordsSectionHtml()}
@@ -391,6 +418,7 @@ function render(container) {
 
   container.querySelector('#workouts-row').addEventListener('click', () => navigate('#/storico'));
   container.querySelector('#measures-row').addEventListener('click', () => navigate('#/misure'));
+  container.querySelector('#food-row').addEventListener('click', () => navigate('#/cibo'));
 
   container.querySelectorAll('[data-muscle]').forEach((el) => {
     el.addEventListener('click', () => {

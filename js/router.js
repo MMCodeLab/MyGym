@@ -138,6 +138,11 @@ function route() {
   } else if (parts[0] === 'progressi') {
     routeKey = 'progressi';
     renderFn = views.progress.render;
+  } else if (parts[0] === 'cibo') {
+    // Anche il cibo e' un dettaglio di "Progressi": la voce evidenziata resta
+    // quella, come per misure e storico.
+    routeKey = 'progressi';
+    renderFn = views.food.render;
   } else if (parts[0] === 'misure') {
     // Come lo storico: le misure sono un dettaglio di "Progressi", quindi la
     // voce evidenziata nella barra in basso resta quella.
