@@ -214,9 +214,58 @@ function resultCardHtml() {
     </div>`;
 }
 
+// ---------- Obiettivi giornalieri ----------
+
+// Tre stati e non due: "vicino" serve a far capire che ci si e' quasi
+// arrivati senza dover leggere la percentuale, che di sfuggita non legge
+// nessuno.
+function goalState(pct) {
+  if (pct > 100) return 'is-over';
+  if (pct >= 90) return 'is-near';
+  return '';
+}
+
+function goalBarHtml(etichetta, valore, obiettivo, unita) {
+  const decimali = unita === 'kcal' ? 0 : 1;
+  const pct = Math.round((valore / obiettivo) * 100);
+  const differenza = obiettivo - valore;
+  let nota;
+  if (differenza > 0) nota = `mancano ${formatNumber(differenza, decimali)} ${unita}`;
+  else if (differenza < 0) nota = `superato di ${formatNumber(-differenza, decimali)} ${unita}`;
+  else nota = 'obiettivo centrato';
+
+  return `
+    <div class="goal-bar ${goalState(pct)}">
+      <div class="goal-bar-head">
+        <span class="goal-bar-label">${etichetta}</span>
+        <span class="goal-bar-value">${formatNumber(valore, decimali)} / ${formatNumber(obiettivo, 0)} ${unita}</span>
+      </div>
+      <div class="goal-bar-track"><span class="goal-bar-fill" style="width:${Math.min(100, Math.max(0, pct))}%"></span></div>
+      <div class="goal-bar-foot"><span class="goal-bar-pct">${pct}%</span><span>${nota}</span></div>
+    </div>`;
+}
+
+function goalsHtml(somma) {
+  const { goals } = store.get();
+  if (!goals.kcal && !goals.protein) {
+    return `<p class="goal-empty">Nessun obiettivo impostato. <button class="chip" id="goal-setup-link">Imposta un obiettivo</button></p>`;
+  }
+  return `
+    <div class="goal-bars">
+      ${goals.kcal ? goalBarHtml('Calorie', somma.kcal || 0, goals.kcal, 'kcal') : ''}
+      ${goals.protein ? goalBarHtml('Proteine', somma.proteine || 0, goals.protein, 'g') : ''}
+    </div>`;
+}
+
 function diaryHtml() {
   const meals = store.getMealsByDay(todayKey());
-  if (!meals.length) return '';
+  const { goals } = store.get();
+  const conObiettivi = !!(goals.kcal || goals.protein);
+  // Con un obiettivo impostato il diario si mostra anche a stomaco vuoto: le
+  // barre a zero dicono quanto c'e' ancora da mangiare, che a inizio giornata
+  // e' l'unica cosa che interessa.
+  if (!meals.length && !conObiettivi) return '';
+
   const somma = meals.reduce((acc, m) => {
     ['kcal', 'proteine', 'carboidrati', 'grassi', 'fibre'].forEach((k) => {
       acc[k] = (acc[k] || 0) + (Number(m.totals[k]) || 0);
@@ -228,15 +277,19 @@ function diaryHtml() {
     <div class="page-section">
       <h3>Diario di oggi</h3>
       <div class="card glass">
-        ${totalsHtml(somma, `totale di oggi · ${meals.length} past${meals.length === 1 ? 'o' : 'i'}`)}
-        <div class="food-list mt-3">
-          ${meals.map((m) => `
-            <div class="food-row">
-              <span class="food-name">${escapeHtml(m.name)}<small>${new Date(m.date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} · ${m.items.length} aliment${m.items.length === 1 ? 'o' : 'i'}</small></span>
-              <span class="food-kcal">${Math.round(m.totals.kcal || 0)} kcal</span>
-              <button class="icon-btn danger" data-delete-meal="${m.id}" aria-label="Elimina ${escapeHtml(m.name)}">${icon('trash')}</button>
-            </div>`).join('')}
-        </div>
+        ${goalsHtml(somma)}
+        ${totalsHtml(somma, meals.length
+          ? `totale di oggi · ${meals.length} past${meals.length === 1 ? 'o' : 'i'}`
+          : 'oggi · ancora niente')}
+        ${meals.length ? `
+          <div class="food-list mt-3">
+            ${meals.map((m) => `
+              <div class="food-row">
+                <span class="food-name">${escapeHtml(m.name)}<small>${new Date(m.date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} · ${m.items.length} aliment${m.items.length === 1 ? 'o' : 'i'}</small></span>
+                <span class="food-kcal">${Math.round(m.totals.kcal || 0)} kcal</span>
+                <button class="icon-btn danger" data-delete-meal="${m.id}" aria-label="Elimina ${escapeHtml(m.name)}">${icon('trash')}</button>
+              </div>`).join('')}
+          </div>` : ''}
       </div>
     </div>`;
 }
@@ -334,6 +387,9 @@ function render(container) {
       render(container);
     });
   }
+
+  const goalLink = container.querySelector('#goal-setup-link');
+  if (goalLink) goalLink.addEventListener('click', () => navigate('#/impostazioni'));
 
   container.querySelectorAll('[data-delete-meal]').forEach((btn) => {
     btn.addEventListener('click', () => {

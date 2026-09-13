@@ -116,8 +116,15 @@ function download(filename, text) {
 }
 
 function render(container) {
-  const { theme, restTimerSeconds, sex } = store.get();
+  const { theme, restTimerSeconds, sex, goals } = store.get();
   const activeIndex = theme === 'dark' ? 0 : 1;
+
+  // 1,8 g di proteine per kg e' la quantita' su cui si trova d'accordo quasi
+  // tutta la letteratura per chi fa pesi: e' un punto di partenza, non un
+  // dogma, quindi si propone e non si impone. Senza un peso registrato non
+  // c'e' niente su cui calcolarla e il suggerimento sparisce.
+  const peso = store.latestMeasurementValue('peso');
+  const proteineSuggerite = peso ? Math.round(peso.value * 1.8) : null;
 
   container.innerHTML = `
     <h1 class="section-title">Impostazioni</h1>
@@ -151,6 +158,31 @@ function render(container) {
           <span class="chip ${sex === key ? 'selected' : ''}" data-sex="${key}" ${sex === key ? 'style="background:var(--accent-gradient);border-color:transparent"' : ''}>${label}</span>
         `).join('')}
       </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Obiettivi giornalieri</h3>
+      <div class="settings-row glass">
+        <div class="settings-row-text">
+          <div class="settings-row-title">Calorie e proteine</div>
+          <div class="settings-row-desc">Il diario del Cibo mostra quanto manca per arrivarci. Lascia il campo vuoto per non avere un obiettivo.</div>
+        </div>
+      </div>
+      <div class="goal-fields">
+        <div class="field">
+          <label for="goal-kcal">Calorie al giorno (kcal)</label>
+          <input type="text" inputmode="numeric" class="input" id="goal-kcal" value="${goals.kcal ?? ''}" placeholder="es. 2200" />
+        </div>
+        <div class="field">
+          <label for="goal-protein">Proteine al giorno (g)</label>
+          <input type="text" inputmode="numeric" class="input" id="goal-protein" value="${goals.protein ?? ''}" placeholder="es. 130" />
+        </div>
+      </div>
+      ${proteineSuggerite ? `
+        <p class="settings-section-hint goal-hint">
+          Con i tuoi ${Number(peso.value).toLocaleString('it-IT', { maximumFractionDigits: 1 })} kg sono circa <strong>${proteineSuggerite} g</strong> di proteine al giorno (1,8 g per kg di peso).
+          <button class="chip" id="goal-protein-hint">Usa questo valore</button>
+        </p>` : ''}
     </div>
 
     <div class="settings-section">
@@ -238,6 +270,27 @@ function render(container) {
       render(container);
     });
   });
+
+  // Si salva senza ridisegnare: il "change" scatta quando il campo perde il
+  // fuoco, e rifare la pagina proprio in quel momento si mangerebbe il tocco
+  // con cui si sta passando all'altro campo. Il valore si riscrive normalizzato
+  // cosi' quello che resta a schermo e' davvero quello salvato.
+  [['#goal-kcal', 'kcal'], ['#goal-protein', 'protein']].forEach(([selector, key]) => {
+    const input = container.querySelector(selector);
+    input.addEventListener('change', () => {
+      store.setGoals({ [key]: input.value.trim().replace(',', '.') });
+      input.value = store.get().goals[key] ?? '';
+    });
+  });
+
+  const goalHintBtn = container.querySelector('#goal-protein-hint');
+  if (goalHintBtn) {
+    goalHintBtn.addEventListener('click', () => {
+      store.setGoals({ protein: proteineSuggerite });
+      showToast(`Obiettivo proteine: ${proteineSuggerite} g al giorno`);
+      render(container);
+    });
+  }
 
   container.querySelectorAll('[data-rest-seconds]').forEach((chip) => {
     chip.addEventListener('click', () => {

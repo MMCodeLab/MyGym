@@ -102,7 +102,15 @@ function emptySet(kind) {
 }
 
 function defaultState() {
-  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90, sex: 'maschio', meals: [] };
+  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90, sex: 'maschio', meals: [], goals: { kcal: null, protein: null } };
+}
+
+// Un obiettivo o e' un numero positivo o non c'e' affatto: lo zero e le cose
+// scritte storte valgono come "non impostato", cosi' le barre del diario non
+// devono difendersi da una divisione per zero.
+function normalizeGoal(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
 }
 
 const MAX_MUSCLE_GROUPS_PER_EXERCISE = 3;
@@ -134,6 +142,9 @@ function load() {
     // resterebbe undefined e addMeasurement fallirebbe.
     merged.measurements = merged.measurements || [];
     merged.meals = merged.meals || [];
+    // I backup precedenti agli obiettivi non hanno il campo, e uno salvato a
+    // meta' potrebbe avere una sola delle due chiavi.
+    merged.goals = { ...defaultState().goals, ...(merged.goals || {}) };
     return merged;
   } catch (e) {
     console.warn('Impossibile leggere i dati salvati, riparto da zero.', e);
@@ -186,6 +197,17 @@ const store = {
   // ---- Sesso (figura e traguardi della mappa dei muscoli) ----
   setSex(sex) {
     state.sex = sex === 'femmina' ? 'femmina' : 'maschio';
+    save();
+  },
+
+  // ---- Obiettivi giornalieri (diario del Cibo) ----
+  // Si passa un oggetto parziale: cambiare le calorie non deve costringere a
+  // riscrivere anche le proteine.
+  setGoals(patch) {
+    const goals = { ...state.goals };
+    if ('kcal' in patch) goals.kcal = normalizeGoal(patch.kcal);
+    if ('protein' in patch) goals.protein = normalizeGoal(patch.protein);
+    state.goals = goals;
     save();
   },
 

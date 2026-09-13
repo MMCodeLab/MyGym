@@ -75,6 +75,10 @@
   /* Avvisi non gravi (es. "e' ora di fare un backup"). Il --gold del tema
      scuro su fondo chiaro non si leggerebbe, quindi cambia col tema. */
   --warning: #f4b740;
+
+  /* Verde delle barre degli obiettivi quando si e' quasi arrivati. Come
+     --warning cambia col tema, perche' su fondo chiaro sbiadirebbe. */
+  --goal-near: #22c55e;
 }
 
 /* ---------- Light theme ---------- */
@@ -102,6 +106,7 @@
   --skeleton-shine: rgba(20, 22, 31, 0.15);
 
   --warning: #a56100;
+  --goal-near: #15803d;
 }
 
 * { box-sizing: border-box; }
@@ -1008,6 +1013,42 @@ a { color: inherit; text-decoration: none; }
   border-color: rgba(139, 92, 246, 0.45);
 }
 .food-tot.kcal .v { font-size: 1.8rem; }
+
+/* ---------- Obiettivi giornalieri ---------- */
+/* I due campi stanno affiancati: sono numeri corti e messi in colonna
+   spingerebbero il resto delle impostazioni troppo in basso. */
+.goal-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.goal-fields .field { margin: 0; }
+.goal-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.goal-hint .chip { cursor: pointer; }
+
+.goal-bars { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.goal-bar-head, .goal-bar-foot { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.goal-bar-label { font-weight: 700; font-size: 0.85rem; }
+.goal-bar-value { font-size: 0.78rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.goal-bar-track {
+  height: 8px; margin: 6px 0 4px;
+  border-radius: var(--radius-pill); overflow: hidden;
+  background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+}
+.goal-bar-fill {
+  display: block; height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent-gradient);
+  transition: width .3s var(--ease-out);
+}
+.goal-bar-foot { font-size: 0.72rem; color: var(--text-secondary); }
+.goal-bar-pct { font-weight: 700; font-variant-numeric: tabular-nums; }
+.goal-bar.is-near .goal-bar-fill { background: var(--goal-near); }
+.goal-bar.is-near .goal-bar-pct { color: var(--goal-near); }
+.goal-bar.is-over .goal-bar-fill { background: var(--warning); }
+.goal-bar.is-over .goal-bar-pct { color: var(--warning); }
+
+.goal-empty {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 14px; font-size: 0.78rem; color: var(--text-secondary);
+}
+.goal-empty .chip { cursor: pointer; }
 
 /* ---------- Mappa dei muscoli (progressi) ---------- */
 /* Sfondo piu' fermo del vetro normale: la figura ha bisogno di stacco, e sotto
