@@ -148,6 +148,11 @@ function route() {
     // voce evidenziata nella barra in basso resta quella.
     routeKey = 'progressi';
     renderFn = views.measurements.render;
+  } else if (parts[0] === 'resoconto') {
+    // Anche il resoconto mensile e' un dettaglio di "Progressi": la voce
+    // evidenziata nella barra in basso resta quella.
+    routeKey = 'progressi';
+    renderFn = views.monthlyRecap.render;
   } else if (parts[0] === 'storico') {
     // Lo storico e' il dettaglio di "Progressi": la voce evidenziata resta quella.
     routeKey = 'progressi';

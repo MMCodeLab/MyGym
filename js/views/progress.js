@@ -88,6 +88,39 @@ function measuresHeroHtml() {
   `;
 }
 
+// Gli allenamenti del mese in corso: servono solo a dare alla card del
+// resoconto qualcosa da dire prima ancora di aprirla.
+function workoutsThisMonth() {
+  const ora = new Date();
+  return store.get().workouts.filter((w) => {
+    const d = new Date(w.date);
+    return d.getFullYear() === ora.getFullYear() && d.getMonth() === ora.getMonth();
+  });
+}
+
+function recapHeroHtml() {
+  const delMese = workoutsThisMonth();
+  const kg = Math.round(totalVolume(delMese));
+
+  return `
+    <button class="choice-card choice-card-recap glass" id="recap-row">
+      <span class="choice-card-icon">${icon('flag')}</span>
+      <span class="choice-card-body">
+        <span class="choice-card-title">Resoconto mensile</span>
+        <span class="choice-card-desc">${store.get().workouts.length
+          ? 'Il riassunto del mese, con la figura colorata, da condividere come immagine'
+          : 'Qui comparirà il riassunto del mese, pronto da condividere'}</span>
+        ${delMese.length ? `
+          <span class="choice-card-meta">
+            <span><strong>${delMese.length}</strong> questo mese</span>
+            <span><strong>${formatKg(kg)}</strong> kg sollevati</span>
+          </span>` : ''}
+      </span>
+      <span class="choice-card-go">${icon('chevronDown')}</span>
+    </button>
+  `;
+}
+
 // ---------- Diario alimentare ----------
 // Qui si guarda soltanto: le foto si fanno dal Virtual PT, che e' il posto
 // dove vive l'intelligenza artificiale. In Progressi resta il consuntivo.
@@ -323,6 +356,7 @@ function render(container) {
     <div class="page-section choice-cards">
       ${statsHeroHtml()}
       ${measuresHeroHtml()}
+      ${recapHeroHtml()}
     </div>
 
     ${foodDiaryHtml()}
@@ -332,6 +366,7 @@ function render(container) {
 
   container.querySelector('#workouts-row').addEventListener('click', () => navigate('#/storico'));
   container.querySelector('#measures-row').addEventListener('click', () => navigate('#/misure'));
+  container.querySelector('#recap-row').addEventListener('click', () => navigate('#/resoconto'));
   container.querySelectorAll('[data-delete-meal]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const meal = store.getMealsByDay(new Date().toISOString().slice(0, 10))

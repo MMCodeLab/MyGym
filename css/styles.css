@@ -1312,6 +1312,41 @@ a { color: inherit; text-decoration: none; }
 .set-remove-btn svg { width: 15px; height: 15px; }
 .set-remove-spacer { width: 34px; flex-shrink: 0; }
 
+/* ---------- Resoconto mensile ---------- */
+.choice-card-recap { border-color: rgba(244, 183, 64, 0.45); }
+.choice-card-recap::before { background: radial-gradient(circle, rgba(244, 183, 64, 0.35), transparent 70%); }
+.choice-card-recap .choice-card-icon {
+  background: linear-gradient(135deg, #f4b740, #f97316);
+  box-shadow: 0 8px 22px rgba(244, 183, 64, 0.4);
+}
+
+.recap-month { display: flex; align-items: center; gap: 10px; margin-top: var(--space-3); }
+.recap-month-label {
+  flex: 1; text-align: center; text-transform: capitalize;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.15rem;
+}
+/* La stessa freccia dell'indietro, girata: due disegni diversi per lo stesso
+   gesto in due direzioni si noterebbero, e in male. */
+.recap-next svg { transform: rotate(180deg); }
+.icon-btn:disabled { opacity: .35; pointer-events: none; }
+
+.recap-numbers { display: flex; gap: 8px; }
+.recap-number { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.recap-number .v { font-family: var(--font-display); font-weight: 800; font-size: 1.45rem; }
+.recap-number .l { font-size: 0.7rem; color: var(--text-secondary); }
+
+.recap-medals { display: flex; flex-direction: column; gap: 12px; }
+.recap-medal { display: flex; align-items: center; gap: 12px; }
+.recap-medal-emoji {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+}
+.recap-medal-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.recap-medal-name { font-weight: 700; font-size: 0.95rem; }
+.recap-medal-step { font-size: 0.78rem; color: var(--text-secondary); }
+
+.recap-focus .muscle-row:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+
 /* ---------- Grafico progressi (storico allenamenti) ---------- */
 .chart-card { padding: var(--space-4); }
 .line-chart-svg { width: 100%; height: auto; display: block; overflow: visible; }

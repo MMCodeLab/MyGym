@@ -459,9 +459,11 @@ const store = {
   // Per ogni gruppo muscolare la serie piu' forte di sempre, presa dallo
   // storico: e' quello che la mappa dei muscoli confronta con i traguardi delle
   // medaglie. Il cardio non entra, non avendo carichi.
-  getMuscleBests() {
+  // Si puo' restringere a un pezzo di storico: il resoconto mensile chiede i
+  // migliori "prima del mese" per capire quali medaglie sono arrivate dentro.
+  getMuscleBests(workouts) {
     const best = {};
-    state.workouts.forEach((w) => {
+    (workouts || state.workouts).forEach((w) => {
       w.exercises.forEach((e) => {
         if (e.kind === 'cardio') return;
         const muscles = e.muscles || [];
