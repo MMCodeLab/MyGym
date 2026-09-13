@@ -1,7 +1,7 @@
 // Alza questo numero a ogni pubblicazione: e' il cambiamento di questo file
 // che fa accorgere il browser che c'e' una versione nuova, e quindi fa
 // comparire l'avviso "Nuova versione disponibile" (vedi js/pwa-shell.js).
-const CACHE_VERSION = 'mygym-v8';
+const CACHE_VERSION = 'mygym-v9';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -15,6 +15,7 @@ const SHELL_ASSETS = [
   'js/body-paths.js',
   'js/router.js',
   'js/components.js',
+  'js/muscle-standards.js',
   'js/pwa-shell.js',
   'js/exercise-api.js',
   'js/views/home.js',
