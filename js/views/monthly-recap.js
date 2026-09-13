@@ -200,7 +200,7 @@ function focusHtml(r) {
 
 function emptyHtml(container) {
   container.innerHTML = `
-    <div class="flex items-center gap-3">
+    <div class="recap-head">
       <button class="icon-btn" id="back-btn" aria-label="Indietro">${icon('back')}</button>
       <h1 class="section-title" style="margin:0">Resoconto</h1>
     </div>
@@ -232,9 +232,12 @@ function render(container) {
   const r = recapFor(selectedMonth);
 
   container.innerHTML = `
-    <div class="flex items-center gap-3">
+    <div class="recap-head">
       <button class="icon-btn" id="back-btn" aria-label="Indietro">${icon('back')}</button>
       <h1 class="section-title" style="margin:0">Resoconto</h1>
+      <button class="btn btn-share" id="recap-share" ${sharing ? 'disabled' : ''} aria-label="Condividi il resoconto">
+        ${icon('condividi')}<span class="btn-label">${sharing ? 'Attendi…' : 'Condividi'}</span>
+      </button>
     </div>
     <p class="section-subtitle">Com'è andato il mese, in una schermata sola.</p>
 
@@ -273,10 +276,7 @@ function render(container) {
         <div class="card glass">${focusHtml(r)}</div>
       </div>` : ''}
 
-    <button class="btn btn-primary btn-block mt-3" id="recap-share" ${sharing ? 'disabled' : ''}>
-      ${icon('sparkles')} ${sharing ? 'Sto preparando l\'immagine…' : 'Condividi il resoconto'}
-    </button>
-    <p class="food-privacy">L'immagine si crea sul telefono e non passa da nessun server: la condividi tu, con chi vuoi.</p>
+    <p class="food-privacy">L'immagine che condividi si crea sul telefono e non passa da nessun server: la mandi tu, a chi vuoi.</p>
   `;
 
   container.querySelector('#back-btn').addEventListener('click', () => navigate('#/progressi'));
