@@ -1238,6 +1238,19 @@ a { color: inherit; text-decoration: none; }
   flex: 1;
   min-width: 0;
 }
+/* Il suggerimento del carico sta su una riga sola e in tono secondario: deve
+   leggersi di sfuggita mentre si compila la serie, senza allontanare i campi
+   di input dal pollice. */
+.set-suggestion {
+  display: block; width: 100%;
+  margin: 10px 0 0; padding: 0; border: 0; background: none;
+  font: inherit; font-size: 0.72rem; line-height: 1.35;
+  color: var(--text-secondary); text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.set-suggestion.is-tappable { cursor: pointer; }
+.set-suggestion.is-tappable:active { color: var(--text-primary); }
+
 .sets-list { display: flex; flex-direction: column; gap: 8px; }
 .set-row {
   display: flex;

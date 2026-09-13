@@ -404,6 +404,30 @@ const store = {
     });
     return best;
   },
+  // L'ultima volta che questo esercizio e' stato fatto: e' quello che serve al
+  // suggerimento del carico durante l'allenamento. Non e' il record di sempre
+  // ma la serie migliore dell'allenamento piu' recente, perche' il confronto
+  // utile e' "rispetto all'ultima volta" e non "rispetto al giorno buono di
+  // marzo", che scoraggerebbe invece di guidare.
+  lastPerformance(exerciseId, name) {
+    const key = recordKey(exerciseId, name);
+    const recenti = [...state.workouts].sort((a, b) => new Date(b.date) - new Date(a.date));
+    for (const w of recenti) {
+      let best = null;
+      w.exercises.forEach((e) => {
+        if (e.kind === 'cardio') return; // tempo e velocita' non si progrediscono a dischi
+        if (recordKey(e.exerciseId, e.name) !== key) return;
+        e.sets.forEach((s) => {
+          const oneRM = estimated1RM(s.weight, s.reps);
+          if (oneRM > 0 && (!best || oneRM > best.oneRM)) {
+            best = { weight: s.weight, reps: s.reps, oneRM };
+          }
+        });
+      });
+      if (best) return { ...best, date: w.date };
+    }
+    return null;
+  },
   // Ritorna null se non c'e' ancora abbastanza storico per un confronto
   // (niente peso/reps, oppure prima volta in assoluto per questo esercizio).
   // Tutti i record personali ricostruiti dallo storico: per ogni esercizio la

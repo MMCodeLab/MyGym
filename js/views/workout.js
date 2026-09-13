@@ -360,6 +360,49 @@ function muscleMultiChipsHtml(entryId, selected) {
   `).join('');
 }
 
+// ---------- Suggerimento del carico ----------
+
+// I dischi piu' piccoli che si trovano in una palestra normale sono da 1,25 kg
+// per lato: suggerire 61,3 kg vorrebbe dire suggerire un peso che nessuno puo'
+// caricare davvero.
+function roundToPlate(kg) {
+  return Math.round(kg / 2.5) * 2.5;
+}
+
+// Progressione volutamente elementare: se l'ultima volta hai chiuso almeno 8
+// ripetizioni sei pronto ad aggiungere carico, altrimenti resti sul peso e ne
+// aggiungi una. Niente parametri da configurare, perche' un suggerimento che si
+// capisce a colpo d'occhio viene seguito, uno perfetto ma da impostare no.
+function suggestFromLast(last) {
+  if (!last || !last.weight || !last.reps) return null;
+  return last.reps >= 8
+    ? { weight: roundToPlate(last.weight + 2.5), reps: last.reps }
+    : { weight: last.weight, reps: last.reps + 1 };
+}
+
+function loadSuggestionHtml(entry) {
+  if (entry.kind === 'cardio') return '';
+  const last = store.lastPerformance(entry.exerciseId, entry.name);
+  const next = suggestFromLast(last);
+  if (!next) return ''; // prima volta con questo esercizio: non c'e' niente da confrontare
+
+  // Le ripetizioni si ripetono solo quando cambiano: "prova 62,5 kg" si legge
+  // piu' in fretta di "prova 62,5 kg x 8" quando le 8 sono le stesse di prima.
+  const consiglio = next.reps === last.reps
+    ? `prova ${formatNumber(next.weight)} kg`
+    : `prova ${formatNumber(next.weight)} kg × ${next.reps}`;
+  const testo = `Ultima volta ${formatNumber(last.weight)} kg × ${last.reps} → ${consiglio}`;
+
+  // Con tutte le serie gia' compilate non c'e' niente da riempire: la riga
+  // resta un'informazione e smette di essere un pulsante che non fa niente.
+  const vuota = entry.sets.findIndex((s) => s.reps == null && s.weight == null);
+  if (vuota === -1) return `<p class="set-suggestion">${escapeHtml(testo)}</p>`;
+
+  return `<button class="set-suggestion is-tappable" data-suggest="${entry.id}" data-suggest-index="${vuota}"
+    data-suggest-reps="${next.reps}" data-suggest-weight="${next.weight}"
+    title="Tocca per compilare la serie ${vuota + 1}">${escapeHtml(testo)}</button>`;
+}
+
 // Sul tapis roulant (e in genere sul cardio) chiedere carico e ripetizioni non
 // ha senso: la stessa riga cambia i due campi in tempo e velocita' media.
 function setFieldsHtml(entry, set, index) {
@@ -406,6 +449,7 @@ function exerciseEntryHtml(entry) {
       <div class="chip-row mt-2" data-muscle-picker="${entry.id}">
         ${muscleMultiChipsHtml(entry.id, entry.muscles)}
       </div>
+      ${loadSuggestionHtml(entry)}
       <div class="sets-list mt-3">
         ${entry.sets.map((s, i) => setRowHtml(entry, s, i, entry.sets.length)).join('')}
       </div>
@@ -704,6 +748,16 @@ function renderActive(container) {
   container.querySelectorAll('[data-add-set]').forEach((btn) => {
     btn.addEventListener('click', () => {
       store.addActiveWorkoutSet(btn.dataset.addSet);
+      renderActive(container);
+    });
+  });
+
+  container.querySelectorAll('[data-suggest]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      store.updateActiveWorkoutSet(btn.dataset.suggest, Number(btn.dataset.suggestIndex), {
+        reps: Number(btn.dataset.suggestReps),
+        weight: Number(btn.dataset.suggestWeight),
+      });
       renderActive(container);
     });
   });
