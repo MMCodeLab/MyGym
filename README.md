@@ -24,9 +24,12 @@ Nessun account, nessuna pubblicità: solo uno strumento semplice per tenere orga
 - Dentro ogni giorno: aggiungi/rimuovi esercizi dalla tua libreria, imposta serie × ripetizioni.
 - Libreria **esercizi** globale: crea un esercizio scegliendo nome, fino a 3 parti del corpo e immagine illustrativa suggerita automaticamente (con descrizione tradotta in italiano).
 - **Inizia allenamento**: cronometro, registrazione serie×reps×kg per ogni esercizio con suggerimenti dal giorno scelto, riepilogo finale.
+- **Suggerimento del carico**: sotto ogni esercizio di forza compaiono l'ultima prestazione e il consiglio per oggi (almeno 8 ripetizioni l'ultima volta → +2,5 kg, altrimenti stesso peso e una ripetizione in più). Toccando la riga si compila la prima serie ancora vuota.
 - **Storico allenamenti** e grafico dei progressi (Progressi → Allenamenti).
+- **Resoconto mensile** (Progressi → Resoconto): per ogni mese allenamenti, tempo, chili sollevati, la figura del corpo colorata per medaglia, i passaggi di livello guadagnati nel mese, i record battuti e il gruppo muscolare più allenato e più trascurato. Il pulsante "Condividi" genera un'immagine 1080×1920 e la passa al foglio di condivisione del telefono (con download del PNG come riserva).
 - **Misure del corpo** (Progressi → Misure): peso, altezza, massa grassa e le circonferenze che si prendono col metro, con data e ora registrate da sole a ogni misurazione, indice di massa corporea e grafico dell'andamento di ogni misura.
 - **Virtual Personal Trainer**: genera una scheda su misura con l'IA (Groq) a partire da dati, obiettivo e livello — vedi [`cloudflare-worker/`](cloudflare-worker/worker.js) per la configurazione.
+- **Obiettivi giornalieri**: calorie e proteine da raggiungere ogni giorno (Impostazioni → Obiettivi giornalieri, con il suggerimento di 1,8 g di proteine per kg calcolato sull'ultimo peso registrato). Il diario del Cibo mostra due barre verso l'obiettivo con la percentuale e quanto manca.
 - **Impostazioni**: tema chiaro/scuro (scuro di default), esportazione/importazione backup in JSON.
 - Installabile come app, con funzionamento offline.
 
@@ -67,8 +70,10 @@ css/styles.css               design system: glassmorphism, temi, animazioni
 js/
   app.js                    bootstrap dell'app
   state.js                  store dati + persistenza in localStorage
-  router.js                  routing via hash (#/, #/day/:id, #/esercizi, #/allenamento, #/progressi, #/storico, #/misure, #/pt, #/impostazioni)
+  router.js                  routing via hash (#/, #/day/:id, #/esercizi, #/allenamento, #/progressi, #/storico, #/misure, #/resoconto, #/cibo, #/pt, #/impostazioni)
   components.js              helper UI condivisi (modali, toast, icone SVG)
+  muscle-standards.js        traguardi delle medaglie e figura anatomica, condivisi tra Progressi e Resoconto
+  share-card.js              immagine 1080×1920 del resoconto mensile (canvas + navigator.share)
   exercise-api.js            ricerca immagini esercizio + traduzione
   pwa-shell.js               avviso di nuova versione, stato offline, promemoria del backup
   views/
@@ -76,8 +81,10 @@ js/
     exercises.js                libreria esercizi
     workout.js                  Inizia allenamento (cronometro, serie/reps/kg)
     workout-history.js          storico + grafico progressi
-    progress.js                 Progressi: scorciatoie ad allenamenti e misure, record personali
+    progress.js                 Progressi: scorciatoie ad allenamenti e misure, record personali, mappa dei muscoli
+    monthly-recap.js            Resoconto mensile e immagine da condividere
     measurements.js             Misure: peso, altezza, circonferenze e grafico dell'andamento
+    food.js                     Cibo: analisi del piatto con l'IA e diario con gli obiettivi giornalieri
     personal-trainer.js         Virtual Personal Trainer (IA via Cloudflare Worker)
     settings.js                 impostazioni
 icons/                        icone PWA
