@@ -323,6 +323,7 @@ function render(container) {
 
 window.MyGym = window.MyGym || {};
 window.MyGym.views = window.MyGym.views || {};
-window.MyGym.views.measurements = { render };
+// Peso attuale, massa corporea e grafico si vedono anche in Progressi.
+window.MyGym.views.measurements = { render, summaryHtml, metricChartHtml };
 
 })();

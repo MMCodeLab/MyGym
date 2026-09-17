@@ -22,10 +22,12 @@ function computeWorkoutVolume(w) {
 // ---------- Grafico: andamento del carico sollevato, per allenamento ----------
 // Stesso stile "a linea morbida" di prima, ma un punto per allenamento
 // (in ordine cronologico) invece che un punto per settimana.
+// In Progressi sta in piccolo con gli ultimi 10 allenamenti; toccandolo si
+// apre questa schermata, dove e' grande (large) e ne mostra fino a 30.
 
-function volumeChartHtml(workouts) {
+function volumeChartHtml(workouts, { large = false } = {}) {
   const chronological = [...workouts].sort((a, b) => new Date(a.date) - new Date(b.date));
-  const recent = chronological.slice(-10);
+  const recent = chronological.slice(large ? -30 : -10);
   const n = recent.length;
 
   if (n < 2) {
@@ -34,7 +36,7 @@ function volumeChartHtml(workouts) {
 
   const values = recent.map((w) => Math.round(computeWorkoutVolume(w)));
   const max = Math.max(1, ...values);
-  const W = 320, H = 120, PAD_X = 14, PAD_TOP = 20;
+  const W = 320, H = large ? 210 : 120, PAD_X = 14, PAD_TOP = 20;
   const plotH = H - PAD_TOP;
   const stepX = (W - PAD_X * 2) / (n - 1);
 
@@ -56,13 +58,15 @@ function volumeChartHtml(workouts) {
   const areaPath = `${linePath} L ${points[n - 1].x} ${H} L ${points[0].x} ${H} Z`;
 
   // Solo l'ultimo punto (l'allenamento piu' recente) mostra il valore in
-  // etichetta, per non affollare il grafico con tanti punti vicini.
+  // etichetta, per non affollare il grafico con tanti punti vicini. In grande
+  // c'e' spazio anche per il massimo, che e' il riferimento da battere.
+  const peak = large ? values.indexOf(Math.max(...values)) : -1;
   const dots = points.map((p, i) => `
     <circle cx="${p.x}" cy="${p.y}" r="${i === n - 1 ? 5 : 3}" class="line-chart-dot${i === n - 1 ? ' line-chart-dot-current' : ''}" />
-    ${i === n - 1 ? `<text x="${p.x}" y="${p.y - 9}" class="line-chart-value" text-anchor="middle">${p.value} kg</text>` : ''}
+    ${i === n - 1 || i === peak ? `<text x="${p.x}" y="${p.y - 9}" class="line-chart-value" text-anchor="middle">${p.value} kg</text>` : ''}
   `).join('');
 
-  const labelEvery = Math.max(1, Math.ceil(n / 4));
+  const labelEvery = Math.max(1, Math.ceil(n / (large ? 6 : 4)));
   const labels = points.map((p, i) => (i % labelEvery === 0 || i === n - 1) ? `
     <text x="${p.x}" y="${H + 15}" class="line-chart-label" text-anchor="middle">${p.date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</text>
   ` : '').join('');
@@ -217,11 +221,7 @@ function render(container) {
         ${icon('chartBar')}
         <span style="font-weight:700;font-size:0.9rem">Carico per allenamento</span>
       </div>
-      ${volumeChartHtml(workouts)}
-    </div>
-
-    <div class="card glass chart-card mt-3">
-      ${streakGridHtml(workouts)}
+      ${volumeChartHtml(workouts, { large: true })}
     </div>
 
     <div id="history-list" class="mt-4">
@@ -259,6 +259,7 @@ function render(container) {
 
 window.MyGym = window.MyGym || {};
 window.MyGym.views = window.MyGym.views || {};
-window.MyGym.views.workoutHistory = { render };
+// Calendario e grafico stanno anche in cima a Progressi (vedi progress.js).
+window.MyGym.views.workoutHistory = { render, streakGridHtml, volumeChartHtml };
 
 })();

@@ -2,11 +2,11 @@
 (function () {
 
 const {
-  store, icon, escapeHtml, navigate, showToast, confirmAction, BODY_METRICS,
+  store, icon, escapeHtml, navigate, showToast, confirmAction,
   TIERS, STANDARDS, muscleScores, bodyFigureHtml,
 } = window.MyGym;
 
-// ---------- Scorciatoia allo storico + record personali ----------
+// ---------- Formattazione ----------
 
 function formatKg(value) {
   return Number(value || 0).toLocaleString('it-IT', { maximumFractionDigits: 1 });
@@ -25,99 +25,70 @@ function formatRecordTime(iso) {
   return new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 
-function totalVolume(workouts) {
-  return workouts.reduce((sum, w) => sum + w.exercises.reduce((s, e) => (
-    s + e.sets.reduce((x, set) => x + (set.reps || 0) * (set.weight || 0), 0)
-  ), 0), 0);
-}
+// ---------- Allenamenti: calendario del mese e grafico del carico ----------
+// Stanno direttamente qui invece che dietro una scorciatoia, perche' sono la
+// prima cosa che si viene a guardare. Il grafico si tocca per aprirlo in
+// grande, con tutti gli allenamenti sotto (vedi workout-history.js, che
+// disegna entrambi).
 
-function statsHeroHtml() {
-  const { workouts } = store.get();
-  const metrics = workouts.length
-    ? `
-      <span class="choice-card-meta">
-        <span><strong>${workouts.length}</strong> allenament${workouts.length === 1 ? 'o' : 'i'}</span>
-        <span><strong>${formatKg(Math.round(totalVolume(workouts)))}</strong> kg sollevati</span>
-      </span>`
-    : '';
+function workoutsSectionHtml() {
+  const history = window.MyGym.views.workoutHistory;
+  const workouts = store.getWorkouts();
 
   return `
-    <button class="choice-card choice-card-workouts glass" id="workouts-row">
-      <span class="choice-card-icon">${icon('chartBar')}</span>
-      <span class="choice-card-body">
-        <span class="choice-card-title">Allenamenti</span>
-        <span class="choice-card-desc">${workouts.length ? 'Storico completo e grafico dei progressi' : 'Qui compariranno storico e grafico dei progressi'}</span>
-        ${metrics}
-      </span>
-      <span class="choice-card-go">${icon('chevronDown')}</span>
-    </button>
+    <div class="page-section">
+      <h3>Allenamenti</h3>
+      <div class="card glass chart-card">${history.streakGridHtml(workouts)}</div>
+      <div class="card glass chart-card" id="volume-chart-card">
+        <div class="flex items-center gap-2" style="margin-bottom:6px">
+          ${icon('chartBar')}
+          <span style="font-weight:700;font-size:0.9rem">Carico per allenamento</span>
+          <span class="chart-card-go">${icon('chevronDown')}</span>
+        </div>
+        ${history.volumeChartHtml(workouts)}
+      </div>
+    </div>
   `;
 }
 
-// Quante misure diverse sono state segnate almeno una volta: e' il modo piu'
-// onesto di riassumere in una riga uno storico fatto di campi facoltativi.
-function trackedMetricCount(measurements) {
-  return BODY_METRICS.filter((m) => measurements.some((e) => e.values[m.key] != null)).length;
-}
+// ---------- Peso: quello di oggi e come sta andando ----------
+// Il riepilogo e il grafico sono gli stessi della schermata Misure, che si
+// apre toccandoli: li' c'e' lo storico di tutte le misurazioni.
 
-function measuresHeroHtml() {
-  const measurements = store.getMeasurements();
-  const weight = store.latestMeasurementValue('peso');
+function measuresSectionHtml() {
+  const measures = window.MyGym.views.measurements;
+  const entries = store.getMeasurements();
 
-  let metrics = '';
-  if (measurements.length) {
-    const tracked = trackedMetricCount(measurements);
-    metrics = `
-      <span class="choice-card-meta">
-        ${weight ? `<span><strong>${formatKg(weight.value)}</strong> kg oggi</span>` : ''}
-        <span><strong>${measurements.length}</strong> misurazion${measurements.length === 1 ? 'e' : 'i'}</span>
-        <span><strong>${tracked}</strong> misur${tracked === 1 ? 'a' : 'e'} seguite</span>
-      </span>`;
+  if (!entries.length) {
+    return `
+      <div class="page-section">
+        <h3>Peso e misure</h3>
+        <div class="settings-row glass" id="measures-link" style="cursor:pointer">
+          <div class="settings-row-text">
+            <div class="settings-row-title">Segna il tuo peso</div>
+            <div class="settings-row-desc">Qui compariranno il peso attuale, la massa corporea e il grafico dell'andamento.</div>
+          </div>
+          <span class="chart-card-go">${icon('chevronDown')}</span>
+        </div>
+      </div>
+    `;
   }
 
   return `
-    <button class="choice-card choice-card-measures glass" id="measures-row">
-      <span class="choice-card-icon">${icon('ruler')}</span>
-      <span class="choice-card-body">
-        <span class="choice-card-title">Misure</span>
-        <span class="choice-card-desc">${measurements.length ? 'Peso, altezza e circonferenze, con il loro andamento' : "Segna peso, altezza e circonferenze e guardane l'andamento"}</span>
-        ${metrics}
-      </span>
-      <span class="choice-card-go">${icon('chevronDown')}</span>
-    </button>
-  `;
-}
-
-// Gli allenamenti del mese in corso: servono solo a dare alla card del
-// resoconto qualcosa da dire prima ancora di aprirla.
-function workoutsThisMonth() {
-  const ora = new Date();
-  return store.get().workouts.filter((w) => {
-    const d = new Date(w.date);
-    return d.getFullYear() === ora.getFullYear() && d.getMonth() === ora.getMonth();
-  });
-}
-
-function recapHeroHtml() {
-  const delMese = workoutsThisMonth();
-  const kg = Math.round(totalVolume(delMese));
-
-  return `
-    <button class="choice-card choice-card-recap glass" id="recap-row">
-      <span class="choice-card-icon">${icon('flag')}</span>
-      <span class="choice-card-body">
-        <span class="choice-card-title">Resoconto mensile</span>
-        <span class="choice-card-desc">${store.get().workouts.length
-          ? 'Il riassunto del mese, con la figura colorata, da condividere come immagine'
-          : 'Qui comparirà il riassunto del mese, pronto da condividere'}</span>
-        ${delMese.length ? `
-          <span class="choice-card-meta">
-            <span><strong>${delMese.length}</strong> questo mese</span>
-            <span><strong>${formatKg(kg)}</strong> kg sollevati</span>
-          </span>` : ''}
-      </span>
-      <span class="choice-card-go">${icon('chevronDown')}</span>
-    </button>
+    <div class="page-section">
+      <h3>Peso e misure</h3>
+      <div class="measures-link" id="measures-link">
+        ${measures.summaryHtml()}
+        <div class="card glass chart-card">
+          <div class="flex items-center gap-2" style="margin-bottom:6px">
+            ${icon('progressi')}
+            <span style="font-weight:700;font-size:0.9rem">Andamento del peso</span>
+            <span class="chart-card-go">${icon('chevronDown')}</span>
+          </div>
+          ${measures.metricChartHtml(entries, 'peso')}
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -251,11 +222,28 @@ function recordCardHtml(record, index) {
   `;
 }
 
+// Un paio di record bastano a dare l'idea: gli altri si aprono a richiesta,
+// cosi' una lista lunga non spinge in fondo la mappa dei muscoli. La scelta
+// resta finche' si sta nell'app, anche se la pagina si ridisegna.
+const RECORDS_PREVIEW = 2;
+let showAllRecords = false;
+
+function recordsToggleLabel(total) {
+  return showAllRecords ? 'Mostra meno' : `Mostra tutti (${total})`;
+}
+
 function recordsSectionHtml() {
   const records = store.getPersonalRecords();
 
   const body = records.length
-    ? records.map(recordCardHtml).join('')
+    ? `
+      ${records.slice(0, RECORDS_PREVIEW).map(recordCardHtml).join('')}
+      ${records.length > RECORDS_PREVIEW ? `
+        <div id="records-rest"${showAllRecords ? '' : ' hidden'}>
+          ${records.slice(RECORDS_PREVIEW).map((r, i) => recordCardHtml(r, i + RECORDS_PREVIEW)).join('')}
+        </div>
+        <button class="text-link" id="records-toggle" data-total="${records.length}">${recordsToggleLabel(records.length)}</button>` : ''}
+    `
     : `
       <div class="settings-row glass">
         <div class="settings-row-text">
@@ -349,24 +337,36 @@ function muscleMapHtml() {
 }
 
 function render(container) {
+  // Il resoconto del mese sta accanto al titolo: e' la cosa da aprire quando
+  // si vuole il quadro d'insieme, e in cima la si trova senza scorrere.
   container.innerHTML = `
-    <h1 class="section-title">Progressi</h1>
+    <div class="recap-head progress-head">
+      <h1 class="section-title">Progressi</h1>
+      <button class="btn btn-share" id="recap-btn">${icon('flag')}<span class="btn-label">Vediamo com'è andato il mese</span></button>
+    </div>
     <p class="section-subtitle">Storico, grafici e record personali.</p>
 
-    <div class="page-section choice-cards">
-      ${statsHeroHtml()}
-      ${measuresHeroHtml()}
-      ${recapHeroHtml()}
-    </div>
-
+    ${workoutsSectionHtml()}
+    ${measuresSectionHtml()}
     ${foodDiaryHtml()}
     ${recordsSectionHtml()}
     ${muscleMapHtml()}
   `;
 
-  container.querySelector('#workouts-row').addEventListener('click', () => navigate('#/storico'));
-  container.querySelector('#measures-row').addEventListener('click', () => navigate('#/misure'));
-  container.querySelector('#recap-row').addEventListener('click', () => navigate('#/resoconto'));
+  container.querySelector('#recap-btn').addEventListener('click', () => navigate('#/resoconto'));
+  container.querySelector('#volume-chart-card').addEventListener('click', () => navigate('#/storico'));
+  container.querySelector('#measures-link').addEventListener('click', () => navigate('#/misure'));
+
+  const recordsToggle = container.querySelector('#records-toggle');
+  if (recordsToggle) {
+    recordsToggle.addEventListener('click', () => {
+      const rest = container.querySelector('#records-rest');
+      showAllRecords = rest.hidden;
+      rest.hidden = !showAllRecords;
+      recordsToggle.textContent = recordsToggleLabel(Number(recordsToggle.dataset.total));
+    });
+  }
+
   container.querySelectorAll('[data-delete-meal]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const meal = store.getMealsByDay(new Date().toISOString().slice(0, 10))
