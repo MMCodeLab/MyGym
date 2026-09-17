@@ -303,6 +303,104 @@ function startTicking() {
 
 // ---------- Schermata 1: scelta del giorno ----------
 
+function pad2(n) { return String(n).padStart(2, '0'); }
+// Il giorno in ora locale, non quello UTC della data salvata: un allenamento
+// finito a mezzanotte e mezza e' di quel giorno, non del precedente.
+function dateKey(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+
+const WEEKDAY_LABELS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+
+// La settimana in corso, da lunedi' a domenica, con gli stessi pallini del
+// calendario di Progressi: prima di scegliere si vede se si e' in pari.
+function weekStripHtml(workouts) {
+  const trained = new Set(workouts.map((w) => dateKey(new Date(w.date))));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+
+  let count = 0;
+  const cells = WEEKDAY_LABELS.map((_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const filled = trained.has(dateKey(d));
+    if (filled) count += 1;
+    const cls = filled ? 'streak-cell-filled' : (d > today ? 'streak-cell-future' : 'streak-cell-empty');
+    const isToday = d.getTime() === today.getTime();
+    return `<span class="streak-cell ${cls}${isToday ? ' streak-cell-today' : ''}">${d.getDate()}</span>`;
+  }).join('');
+
+  return `
+    <div class="card glass chart-card">
+      <div class="flex items-center justify-between" style="margin-bottom:10px">
+        <span style="font-weight:700;font-size:0.9rem">Questa settimana</span>
+        <span class="text-secondary" style="font-size:0.78rem">${count ? `${count} allenament${count === 1 ? 'o' : 'i'}` : 'ancora nessun allenamento'}</span>
+      </div>
+      <div class="streak-weekdays">${WEEKDAY_LABELS.map((l) => `<span>${l}</span>`).join('')}</div>
+      <div class="streak-grid">${cells}</div>
+    </div>
+  `;
+}
+
+// Un allenamento appartiene a un giorno dal suo id; quelli salvati prima che
+// l'id venisse registrato si riconoscono dal nome.
+function workoutOfDay(w, day) {
+  return w.dayId ? w.dayId === day.id : w.weekday === day.name;
+}
+
+// workouts va dal piu' recente al piu' vecchio (store.getWorkouts).
+function lastTimeLabel(day, workouts) {
+  const last = workouts.find((w) => workoutOfDay(w, day));
+  if (!last) return 'mai fatto';
+  const then = new Date(last.date);
+  then.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((today - then) / 86400000);
+  if (days <= 0) return 'fatto oggi';
+  if (days === 1) return 'ultima volta ieri';
+  return `ultima volta ${days} giorni fa`;
+}
+
+// Il giorno che tocca e' quello dopo l'ultimo allenato, nell'ordine in cui
+// sono messi i giorni: chi segue una scheda a rotazione la ritrova da sola,
+// senza doversi ricordare dove era arrivato.
+function nextDayId(days, workouts) {
+  for (const w of workouts) {
+    const i = days.findIndex((d) => workoutOfDay(w, d));
+    if (i !== -1) return days[(i + 1) % days.length].id;
+  }
+  return days[0].id;
+}
+
+function pickDayCardHtml(day, { selected, next, lastLabel }) {
+  const exercises = day.entries.map((e) => store.getExercise(e.exerciseId)).filter(Boolean);
+  const groups = [...new Set(exercises.flatMap((ex) => ex.muscleGroups || []))];
+  const badges = groups.slice(0, 4).map((key) => {
+    const mg = muscleGroup(key);
+    return `<span class="badge" style="background:${mg.color}">${escapeHtml(mg.label)}</span>`;
+  }).join('') + (groups.length > 4 ? `<span class="badge" style="background:var(--mg-altro)">+${groups.length - 4}</span>` : '');
+  const thumbs = exercises.slice(0, 4).map((ex) => `
+    <span class="pick-day-thumb">${ex.imageUrl ? `<img src="${escapeHtml(ex.imageUrl)}" alt="" loading="lazy" draggable="false" />` : icon('dumbbell')}</span>
+  `).join('') + (exercises.length > 4 ? `<span class="pick-day-thumb pick-day-thumb-more">+${exercises.length - 4}</span>` : '');
+  const count = exercises.length
+    ? `${exercises.length} eserciz${exercises.length === 1 ? 'io' : 'i'}`
+    : 'Nessun esercizio nella scheda';
+
+  return `
+    <div class="card glass pick-day-card${selected ? ' selected' : ''}" data-day-id="${day.id}" role="button" aria-pressed="${selected}">
+      <div class="pick-day-head">
+        <span class="pick-day-name">${escapeHtml(day.name)}</span>
+        ${next ? '<span class="badge badge-next">Tocca a questo</span>' : ''}
+        <span class="pick-day-check">${icon('check')}</span>
+      </div>
+      <span class="day-card-meta">${count} · ${lastLabel}</span>
+      ${exercises.length ? `<div class="pick-day-thumbs">${thumbs}</div>` : ''}
+      ${groups.length ? `<div class="day-card-chips">${badges}</div>` : ''}
+    </div>
+  `;
+}
+
 function renderPickDay(container) {
   const { days } = store.get();
 
@@ -320,25 +418,41 @@ function renderPickDay(container) {
     return;
   }
 
+  const workouts = store.getWorkouts();
+  const suggestedId = nextDayId(days, workouts);
+  // Il giorno che tocca parte gia' scelto: nel caso normale basta un tocco
+  // su "Inizia".
+  let selectedDayId = suggestedId;
+  const startLabel = () => {
+    const day = days.find((d) => d.id === selectedDayId);
+    return `${icon('play')}<span class="pick-day-start-label">Inizia ${escapeHtml(day ? day.name : 'allenamento')}</span>`;
+  };
+
   container.innerHTML = `
     <h1 class="section-title">Inizia allenamento</h1>
     <p class="section-subtitle">Quale giorno vuoi allenare?</p>
-    <div class="weekday-grid" id="day-grid">
-      ${days.map((d) => `<span class="chip chip-lg" data-day-id="${d.id}">${escapeHtml(d.name)}</span>`).join('')}
+    ${weekStripHtml(workouts)}
+    <div class="pick-day-list" id="day-grid">
+      ${days.map((d) => pickDayCardHtml(d, {
+        selected: d.id === selectedDayId,
+        next: d.id === suggestedId,
+        lastLabel: lastTimeLabel(d, workouts),
+      })).join('')}
     </div>
-    <button class="btn btn-primary btn-block mt-4" id="start-workout-btn" disabled>Inizia allenamento</button>
+    <button class="btn btn-primary btn-block pick-day-start" id="start-workout-btn">${startLabel()}</button>
   `;
 
-  let selectedDayId = null;
   const grid = container.querySelector('#day-grid');
   const startBtn = container.querySelector('#start-workout-btn');
 
-  grid.querySelectorAll('[data-day-id]').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      selectedDayId = chip.dataset.dayId;
-      grid.querySelectorAll('[data-day-id]').forEach((c) => c.classList.remove('selected'));
-      chip.classList.add('selected');
-      startBtn.disabled = false;
+  grid.querySelectorAll('[data-day-id]').forEach((card) => {
+    card.addEventListener('click', () => {
+      selectedDayId = card.dataset.dayId;
+      grid.querySelectorAll('[data-day-id]').forEach((c) => {
+        c.classList.toggle('selected', c === card);
+        c.setAttribute('aria-pressed', c === card ? 'true' : 'false');
+      });
+      startBtn.innerHTML = startLabel();
     });
   });
 

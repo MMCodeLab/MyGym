@@ -1120,18 +1120,50 @@ a { color: inherit; text-decoration: none; }
 .muscle-row .v { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; text-align: right; }
 .muscle-note { font-size: 0.76rem; color: var(--text-secondary); line-height: 1.45; margin: 12px 0 0; }
 
-/* ---------- Weekday picker (inizia allenamento) ---------- */
-.weekday-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: var(--space-4) 0;
+/* ---------- Scelta del giorno (inizia allenamento) ---------- */
+/* Una card per giorno invece di un bottoncino: con tre o quattro giorni la
+   schermata si riempie di cose utili (foto, muscoli, quando l'hai fatto). */
+.pick-day-list { margin-top: var(--space-3); }
+.pick-day-card { display: flex; flex-direction: column; gap: var(--space-2); }
+.pick-day-card.selected {
+  border-color: var(--accent-a);
+  box-shadow: 0 0 0 1px var(--accent-a), 0 12px 32px rgba(139, 92, 246, 0.28);
 }
-.chip-lg {
-  padding: 14px 22px;
-  font-size: 0.95rem;
-  border-radius: var(--radius-md);
+.pick-day-head { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.pick-day-name {
+  font-family: var(--font-display); font-size: 1.1rem; font-weight: 700;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.badge-next { background: var(--accent-gradient); flex-shrink: 0; }
+.pick-day-check {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; margin-left: auto; flex-shrink: 0;
+  border-radius: 50%; border: 1.5px solid var(--glass-border);
+  color: transparent;
+  transition: background .2s, border-color .2s, color .2s;
+}
+.pick-day-check svg { width: 15px; height: 15px; }
+.pick-day-card.selected .pick-day-check { background: var(--accent-gradient); border-color: transparent; color: #fff; }
+.pick-day-thumbs { display: flex; gap: 6px; }
+.pick-day-thumb {
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; flex-shrink: 0; overflow: hidden;
+  border-radius: 10px; border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong); color: var(--text-tertiary);
+  font-size: 0.78rem; font-weight: 700;
+}
+.pick-day-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.pick-day-thumb svg { width: 20px; height: 20px; }
+/* Il pulsante resta a portata di pollice, sopra la barra in basso, anche
+   quando i giorni da scorrere sono cinque o sei. */
+.pick-day-start {
+  position: sticky;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+  margin-top: var(--space-2);
+  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.45);
+}
+.pick-day-start-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- Cronometro (Inizia allenamento) ---------- */
 .workout-topbar {
@@ -1452,6 +1484,8 @@ a { color: inherit; text-decoration: none; }
   color: #fff;
   box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
 }
+/* Oggi, nella settimana della scelta del giorno: un anello, pieno o vuoto che sia. */
+.streak-cell-today { outline: 2px solid var(--accent-a); outline-offset: 2px; }
 
 /* Testo cliccabile piccolo e discreto, per le azioni secondarie ("Mostra tutti"). */
 .text-link {
