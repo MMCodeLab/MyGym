@@ -33,6 +33,9 @@ const config = {
   backupGraceDays: Number(data.backupGraceDays || 7),
   // Ogni quanti giorni al massimo si ripresenta il promemoria.
   backupNudgeEveryDays: Number(data.backupNudgeEveryDays || 7),
+  // Per quanti secondi il promemoria resta a schermo prima di andarsene da
+  // solo (vedi maybeNudgeBackup).
+  backupNudgeSeconds: Number(data.backupNudgeSeconds || 12),
   // Il promemoria del backup ha senso solo dove c'e' davvero qualcosa da
   // esportare: data-backup="off" lo spegne (per esempio in Cream Puff, che e'
   // un sito e non un'app con i dati dell'utente).
@@ -438,6 +441,16 @@ function markBackupDone() {
   hideBar('backup');
 }
 
+// Sul telefono un'app installata non si chiude quando se ne esce: resta
+// aperta in sottofondo e, rientrando, si ritrova la pagina com'era. Un
+// promemoria rimasto a schermo sembrava cosi' una richiesta nuova a ogni
+// ingresso, anche se era sempre quello di giorni prima.
+function hideBackupNudgeOnLeave() {
+  if (!document.hidden) return;
+  hideBar('backup', true);
+  document.removeEventListener('visibilitychange', hideBackupNudgeOnLeave);
+}
+
 function maybeNudgeBackup() {
   // Tutto dentro il timeout: il promemoria arriva a schermata gia' disegnata,
   // non in mezzo all'avvio, e a quel punto l'app ha certamente gia' chiamato
@@ -464,7 +477,11 @@ function maybeNudgeBackup() {
         if (config.onBackupRequest) config.onBackupRequest();
       },
       dismissible: true,
+      // Il promemoria vale per questa visita e basta: se ne va da solo dopo
+      // qualche secondo, e comunque appena si esce dall'app.
+      autoHideMs: config.backupNudgeSeconds * 1000,
     });
+    document.addEventListener('visibilitychange', hideBackupNudgeOnLeave);
   }, 2500);
 }
 
