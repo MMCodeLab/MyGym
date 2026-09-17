@@ -1,7 +1,7 @@
 // Script classico (non un modulo ES): espone tutto su window.MyGym.views.workout.
 (function () {
 
-const { store, MUSCLE_GROUPS, muscleGroup, icon, escapeHtml, openModal, closeModal, showToast, confirmAction, navigate } = window.MyGym;
+const { store, MUSCLE_GROUPS, muscleGroup, icon, escapeHtml, openModal, closeModal, showToast, confirmAction, navigate, findAutoExerciseMatch } = window.MyGym;
 
 let currentContainer = null;
 let justFinished = null; // record appena salvato, per mostrare il riepilogo
@@ -435,7 +435,7 @@ function setRowHtml(entry, set, index, total) {
   `;
 }
 
-function exerciseEntryHtml(entry) {
+function exerciseEntryHtml(entry, extra) {
   const isCardio = entry.kind === 'cardio';
   return `
     <div class="card glass workout-exercise-card" data-entry-id="${entry.id}">
@@ -446,6 +446,7 @@ function exerciseEntryHtml(entry) {
           title="${isCardio ? 'Ora chiede tempo e velocità: tocca per tornare a ripetizioni e carico' : 'Ora chiede ripetizioni e carico: tocca per passare a tempo e velocità'}">${icon(isCardio ? 'stopwatch' : 'esercizi')}</button>
         <button class="icon-btn danger" data-remove-exercise="${entry.id}" aria-label="Rimuovi esercizio">${icon('trash')}</button>
       </div>
+      ${extra ? '<span class="badge badge-extra workout-extra-badge">Extra · fuori dalla scheda</span>' : ''}
       <div class="chip-row mt-2" data-muscle-picker="${entry.id}">
         ${muscleMultiChipsHtml(entry.id, entry.muscles)}
       </div>
@@ -478,19 +479,42 @@ function doneExerciseKeys() {
   return keys;
 }
 
-function exercisePickCardHtml(ex, done) {
+// Chiavi degli esercizi nella scheda di un giorno, con le regole di
+// exerciseKey: uno scritto a mano con lo stesso nome di uno della scheda e' lo
+// stesso esercizio, non un extra.
+function dayPlanKeys(day) {
+  const keys = new Set();
+  if (!day) return keys;
+  day.entries.forEach((entry) => {
+    const ex = store.getExercise(entry.exerciseId);
+    if (!ex) return;
+    keys.add(exerciseKey(ex.id, ex.name));
+    keys.add(exerciseKey(null, ex.name));
+  });
+  return keys;
+}
+
+// "Extra" e' quello che si fa in piu' rispetto alla scheda del giorno. Non si
+// salva da nessuna parte: si ricava confrontando con la scheda, cosi' resta
+// giusto anche se la scheda cambia a meta' allenamento.
+function isExtra(planKeys, exerciseId, name) {
+  return !planKeys.has(exerciseKey(exerciseId, name)) && !planKeys.has(exerciseKey(null, name));
+}
+
+function exercisePickCardHtml(ex, done, extra) {
   const thumb = ex.imageUrl ? `<img src="${escapeHtml(ex.imageUrl)}" alt="" loading="lazy" draggable="false" />` : icon('dumbbell');
   const badges = (ex.muscleGroups || []).map((key) => {
     const mg = muscleGroup(key);
     return `<span class="badge" style="background:${mg.color}">${escapeHtml(mg.label)}</span>`;
   }).join(' ');
   const doneBadge = done ? `<span class="badge badge-done">${icon('check')} Già fatto</span>` : '';
+  const extraBadge = extra ? '<span class="badge badge-extra">Extra</span>' : '';
   return `
     <div class="card exercise-card glass ${done ? 'is-done' : ''}" data-pick-exercise="${ex.id}">
       <div class="exercise-thumb">${thumb}</div>
       <div class="exercise-info">
         <div class="exercise-name">${escapeHtml(ex.name)}</div>
-        <div class="flex gap-2" style="flex-wrap:wrap">${doneBadge}${badges}</div>
+        <div class="flex gap-2" style="flex-wrap:wrap">${doneBadge}${extraBadge}${badges}</div>
       </div>
     </div>
   `;
@@ -505,21 +529,32 @@ function openAddExerciseModal(initialQuery) {
     : [];
   const done = doneExerciseKeys();
   const isDone = (exerciseId, name) => done.has(exerciseKey(exerciseId, name)) || done.has(exerciseKey(null, name));
-  const cardHtml = (ex) => exercisePickCardHtml(ex, isDone(ex.id, ex.name));
+  const planKeys = dayPlanKeys(day);
+  // L'etichetta "Extra" serve solo nei risultati della ricerca, dove la scheda
+  // e il resto della libreria sono mescolati. Con la scheda vuota tutto
+  // sarebbe extra, e l'etichetta non direbbe niente.
+  const cardHtml = (ex, markExtra) => exercisePickCardHtml(ex, isDone(ex.id, ex.name),
+    markExtra && planKeys.size > 0 && isExtra(planKeys, ex.id, ex.name));
 
   const renderList = (filterText) => {
     const q = (filterText || '').trim().toLowerCase();
 
     if (!q && suggested.length) {
+      // Sotto la scheda c'e' il resto della libreria: gli esercizi fatti in
+      // piu' si trovano scorrendo, senza dover sapere che vanno cercati.
+      const others = exercises.filter((ex) => isExtra(planKeys, ex.id, ex.name));
       return `
         <p class="text-secondary" style="font-size:0.8rem;margin:0 0 8px">Esercizi di "${escapeHtml(day.name)}"</p>
-        ${suggested.map(cardHtml).join('')}
+        ${suggested.map((ex) => cardHtml(ex, false)).join('')}
+        <p class="text-secondary" style="font-size:0.8rem;margin:20px 0 8px">Extra — fuori dalla scheda</p>
+        ${others.map((ex) => cardHtml(ex, false)).join('')}
+        <p class="text-secondary text-center" style="font-size:0.8rem;margin:8px 0 0">Non lo trovi? Scrivi il nome qui sopra per aggiungerlo.</p>
       `;
     }
 
     const matches = q.length ? exercises.filter((ex) => ex.name.toLowerCase().includes(q)) : exercises;
     const listHtml = matches.length
-      ? matches.map(cardHtml).join('')
+      ? matches.map((ex) => cardHtml(ex, true)).join('')
       : `<p class="text-secondary text-center mt-4">Nessun esercizio trovato nella libreria.</p>`;
 
     const freeButton = q.length >= 2
@@ -596,9 +631,10 @@ function openAddExerciseModal(initialQuery) {
 
 function renderActive(container) {
   const w = store.getActiveWorkout();
+  const planKeys = dayPlanKeys(w.dayId ? store.getDay(w.dayId) : null);
 
   const exercisesHtml = w.exercises.length
-    ? w.exercises.map(exerciseEntryHtml).join('')
+    ? w.exercises.map((e) => exerciseEntryHtml(e, planKeys.size > 0 && isExtra(planKeys, e.exerciseId, e.name))).join('')
     : `
       <div class="empty-state glass">
         <div class="empty-emoji">💪</div>
@@ -687,6 +723,7 @@ function renderActive(container) {
         justFinished = store.finishActiveWorkout();
         showToast('Allenamento salvato');
         render(container);
+        openExtrasToDayModal(justFinished);
       },
     });
   });
@@ -803,6 +840,143 @@ function renderActive(container) {
         showToast(`🏆 Nuovo record! ${entry.name} — ${set.reps} reps × ${set.weight} kg`, { variant: 'record' });
       }
     });
+  });
+}
+
+// ---------- Esercizi extra: dentro la scheda o solo per oggi ----------
+
+// Nella scheda l'esercizio entra con quello che e' stato fatto davvero: le
+// serie segnate e le ripetizioni migliori, che sono il traguardo da rifare la
+// volta dopo. Il cardio non ha ripetizioni e resta sul valore predefinito.
+function planFromSets(exercise) {
+  const filled = exercise.sets.filter((s) => (exercise.kind === 'cardio' ? s.minutes || s.speed : s.reps || s.weight));
+  const sets = Math.min(20, Math.max(1, filled.length || exercise.sets.length));
+  const bestReps = exercise.kind === 'cardio' ? 0 : Math.max(0, ...exercise.sets.map((s) => s.reps || 0));
+  return { sets, reps: bestReps ? Math.min(100, Math.round(bestReps)) : 10 };
+}
+
+function workoutExtras(record) {
+  const day = record.dayId ? store.getDay(record.dayId) : null;
+  if (!day) return { day: null, extras: [] };
+  const planKeys = dayPlanKeys(day);
+  // Lo stesso esercizio aggiunto due volte ("Aggiungi comunque") si propone
+  // una volta sola.
+  const seen = new Set();
+  const extras = record.exercises.filter((e) => {
+    if (!isExtra(planKeys, e.exerciseId, e.name)) return false;
+    const keys = [exerciseKey(e.exerciseId, e.name), exerciseKey(null, e.name)];
+    if (keys.some((k) => seen.has(k))) return false;
+    keys.forEach((k) => seen.add(k));
+    return true;
+  });
+  return { day, extras };
+}
+
+// Si apre sopra il riepilogo, ad allenamento gia' salvato: chiudere la
+// finestra non perde niente e vale come "solo per oggi".
+function openExtrasToDayModal(record) {
+  const { day, extras } = workoutExtras(record);
+  if (!day || !extras.length) return;
+
+  const plans = extras.map(planFromSets);
+  const selected = new Set(extras.map((_, i) => i));
+  // Foto trovate da sole per gli esercizi che non ne hanno una (vedi onMount).
+  const found = extras.map(() => null);
+  const lookups = extras.map(() => null);
+
+  const cardHtml = (e, i) => {
+    const ex = store.findExercise(e.exerciseId, e.name);
+    const imageUrl = (ex && ex.imageUrl) || (found[i] && found[i].imageUrl);
+    const thumb = imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" draggable="false" />` : icon('dumbbell');
+    const on = selected.has(i);
+    const detail = e.kind === 'cardio' ? 'Cardio' : `${plans[i].sets} × ${plans[i].reps}`;
+    return `
+      <div class="card exercise-card glass${on ? ' is-picked' : ' is-skipped'}" data-extra-index="${i}" role="button" aria-pressed="${on}">
+        <div class="exercise-thumb">${thumb}</div>
+        <div class="exercise-info">
+          <div class="exercise-name">${escapeHtml(e.name)}</div>
+          <div class="text-secondary" style="font-size:0.78rem;margin-top:2px">${detail}</div>
+        </div>
+        <div class="exercise-row-actions">${on ? icon('check') : icon('plus')}</div>
+      </div>
+    `;
+  };
+
+  const message = extras.length === 1
+    ? `Oggi hai fatto "${extras[0].name}", che non è nella scheda di "${day.name}". Vuoi aggiungerlo?`
+    : `Oggi hai fatto ${extras.length} esercizi che non sono nella scheda di "${day.name}". Vuoi aggiungerli? Tocca quelli da lasciare fuori.`;
+
+  openModal({
+    title: 'Esercizi extra',
+    bodyHtml: `
+      <p class="text-secondary" style="margin-top:0">${escapeHtml(message)}</p>
+      <div id="extras-list">${extras.map(cardHtml).join('')}</div>
+      <div class="flex gap-3 mt-4">
+        <button class="btn btn-glass w-full" id="extras-skip">Solo per oggi</button>
+        <button class="btn btn-primary w-full" id="extras-add">Aggiungi</button>
+      </div>
+    `,
+    onMount: (body) => {
+      const listEl = body.querySelector('#extras-list');
+      const addBtn = body.querySelector('#extras-add');
+
+      function renderList() {
+        listEl.innerHTML = extras.map(cardHtml).join('');
+        bind();
+      }
+
+      // Lasciare fuori un esercizio si annulla con un secondo tocco: niente
+      // conferma, come nella finestra che aggiunge esercizi a un giorno.
+      function bind() {
+        listEl.querySelectorAll('[data-extra-index]').forEach((card) => {
+          card.addEventListener('click', () => {
+            const i = Number(card.dataset.extraIndex);
+            if (selected.has(i)) selected.delete(i); else selected.add(i);
+            addBtn.disabled = !selected.size;
+            renderList();
+          });
+        });
+      }
+      bind();
+
+      // Un esercizio scritto a mano non ha la foto, e nemmeno uno della
+      // libreria salvato senza: la si cerca da sola nel database degli
+      // esercizi, come per le schede del Virtual PT. Arriva dopo qualche
+      // istante e compare nella finestra appena c'e'.
+      extras.forEach((e, i) => {
+        const ex = store.findExercise(e.exerciseId, e.name);
+        if (ex && ex.imageUrl) return;
+        lookups[i] = findAutoExerciseMatch(e.name, e.muscles)
+          .catch(() => null)
+          .then((match) => {
+            found[i] = match;
+            if (match && match.imageUrl && listEl.isConnected) renderList();
+            return match;
+          });
+      });
+
+      body.querySelector('#extras-skip').addEventListener('click', closeModal);
+
+      addBtn.addEventListener('click', () => {
+        extras.forEach((e, i) => {
+          if (!selected.has(i)) return;
+          const ex = store.addWorkoutExerciseToDay(day.id, record.id, {
+            exerciseId: e.exerciseId, name: e.name, muscles: e.muscles, kind: e.kind, ...plans[i],
+          });
+          if (!ex || ex.imageUrl || !lookups[i]) return;
+          // La foto puo' arrivare anche a finestra chiusa: si mette appena
+          // c'e', ma solo se nel frattempo non ne e' stata scelta una a mano.
+          lookups[i].then((match) => {
+            const current = store.getExercise(ex.id);
+            if (!match || !match.imageUrl || !current || current.imageUrl) return;
+            store.updateExercise(ex.id, { imageUrl: match.imageUrl, description: current.description || match.description });
+          });
+        });
+        const count = selected.size;
+        closeModal();
+        showToast(count === 1 ? `Aggiunto alla scheda di "${day.name}"` : `${count} esercizi aggiunti alla scheda di "${day.name}"`);
+      });
+    },
   });
 }
 

@@ -447,6 +447,10 @@ a { color: inherit; text-decoration: none; }
 .exercise-card.is-done { opacity: 0.5; }
 .exercise-card.is-done .exercise-thumb,
 .exercise-card.is-done .badge { filter: grayscale(1); }
+/* Esercizi extra a fine allenamento: quelli lasciati fuori dalla scheda si
+   spengono, cosi' si vede a colpo d'occhio cosa entra davvero. */
+.exercise-card.is-skipped { opacity: 0.5; }
+.exercise-card.is-picked .exercise-row-actions > svg { color: var(--accent-a); }
 .exercise-thumb {
   width: 56px; height: 56px;
   border-radius: var(--radius-sm);
@@ -517,6 +521,15 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-secondary);
 }
 .badge-done svg { width: 12px; height: 12px; }
+/* Esercizio fatto in piu' rispetto alla scheda del giorno: tinta dell'accento
+   ma tenue, perche' e' un'informazione e non un avviso. Il testo resta nel
+   colore normale: viola sul vetro, che prende il viola dello sfondo, si
+   leggerebbe male. */
+.badge-extra {
+  background: rgba(139, 92, 246, 0.22);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  color: var(--text-primary);
+}
 
 /* ---------- Forms ---------- */
 .field { margin-bottom: var(--space-4); }
@@ -1260,6 +1273,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- Esercizio in allenamento (serie/reps/kg) ---------- */
 .workout-exercise-card { display: flex; flex-direction: column; }
+.workout-extra-badge { align-self: flex-start; margin-top: 4px; }
 /* Interruttore forza/cardio sulla scheda dell'esercizio: quando e' cardio si
    accende, cosi' si vede a colpo d'occhio perche' i campi sono diversi. */
 .kind-toggle-btn { color: var(--text-secondary); }

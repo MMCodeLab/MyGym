@@ -265,6 +265,14 @@ const store = {
   getExercise(id) {
     return state.exercises.find((e) => e.id === id) || null;
   },
+  // Dall'id oppure, per un esercizio scritto a mano in allenamento, dal nome:
+  // "panca piana" digitato in palestra e' la "Panca piana" della libreria.
+  findExercise(id, name) {
+    const nameKey = (name || '').trim().toLowerCase();
+    return (id && state.exercises.find((e) => e.id === id))
+      || state.exercises.find((e) => e.name.trim().toLowerCase() === nameKey)
+      || null;
+  },
 
   // ---- Days ----
   addDay(name) {
@@ -312,6 +320,32 @@ const store = {
     if (!entry) return;
     Object.assign(entry, patch);
     save();
+  },
+  // Un esercizio fatto in piu' durante l'allenamento che entra nella scheda
+  // del giorno. La scheda contiene solo esercizi della libreria: uno scritto a
+  // mano si cerca per nome (potrebbe esserci gia') e altrimenti si crea. Poi
+  // si collega all'allenamento appena salvato, cosi' la volta dopo, partendo
+  // dalla scheda, il suggerimento del carico ritrova "l'ultima volta".
+  addWorkoutExerciseToDay(dayId, workoutId, { exerciseId, name, muscles, kind, sets, reps }) {
+    const day = state.days.find((d) => d.id === dayId);
+    if (!day) return null;
+    const nameKey = (name || '').trim().toLowerCase();
+    let ex = store.findExercise(exerciseId, name);
+    if (!ex) {
+      // Come per le schede del Virtual PT: senza almeno una parte del corpo
+      // l'esercizio non si potrebbe piu' risalvare dalla libreria.
+      const groups = (muscles || []).length ? muscles : [kind === 'cardio' ? 'cardio' : 'altro'];
+      ex = store.addExercise({ name, muscleGroups: groups, kind });
+    }
+    const workout = state.workouts.find((w) => w.id === workoutId);
+    if (workout) {
+      workout.exercises.forEach((e) => {
+        if (!e.exerciseId && e.name.trim().toLowerCase() === nameKey) e.exerciseId = ex.id;
+      });
+    }
+    if (!day.entries.some((e) => e.exerciseId === ex.id)) day.entries.push({ exerciseId: ex.id, sets, reps });
+    save();
+    return ex;
   },
   // ---- Allenamento in corso (sopravvive a un refresh, finche' non termini) ----
   getActiveWorkout() {
