@@ -1414,9 +1414,14 @@ a { color: inherit; text-decoration: none; }
   font-weight: 700;
   color: var(--text-tertiary);
 }
+/* Un pallino per giorno, piu' piccolo della colonna: la griglia respira e i
+   giorni allenati si notano come punti colorati invece che come un mosaico. */
 .streak-cell {
+  width: 100%;
+  max-width: 28px;
+  justify-self: center;
   aspect-ratio: 1;
-  border-radius: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;

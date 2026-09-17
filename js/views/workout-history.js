@@ -87,7 +87,7 @@ function volumeChartHtml(workouts) {
   `;
 }
 
-// ---------- Streak mensile: quadratini colorati nei giorni allenati ----------
+// ---------- Streak mensile: pallini colorati nei giorni allenati ----------
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dateKey(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
