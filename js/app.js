@@ -2,7 +2,7 @@
 // window.MyGym contiene gia' store, componenti, router e tutte le viste.
 (function () {
 
-const { applyTheme, icon, initRouter, store, navigate } = window.MyGym;
+const { applyTheme, icon, initRouter, store, navigate, openModal, closeModal, refreshRoute } = window.MyGym;
 
 // Tema applicato subito, prima del primo paint utile.
 applyTheme();
@@ -49,6 +49,50 @@ document.querySelectorAll('.nav-icon').forEach((el) => {
 });
 
 initRouter();
+
+// ---------------------------------------------------------------------------
+// Prima apertura: uomo o donna
+// ---------------------------------------------------------------------------
+// I traguardi di forza delle medaglie e la figura del corpo in Progressi sono
+// diversi per uomo e donna, ma l'app partiva da "maschio" senza chiedere
+// niente: per chi maschio non e', i livelli erano tarati sulla persona
+// sbagliata fin dal primo allenamento, e la cosa restava nascosta in fondo
+// alle Impostazioni. Si chiede una volta sola, appena l'app e' in piedi.
+//
+// Se la finestra viene chiusa senza rispondere non si segna niente e la
+// domanda torna alla prossima apertura: tirare a indovinare e' esattamente il
+// problema da cui si parte.
+function chiediSessoAllaPrimaApertura() {
+  if (store.get().sexChosen) return;
+
+  openModal({
+    title: 'Prima di cominciare',
+    bodyHtml: `
+      <p class="text-secondary" style="margin-top:0">
+        Sei uomo o donna? I traguardi di forza delle medaglie non sono gli stessi,
+        e cambia anche la figura del corpo che vedi in Progressi. Si cambia quando
+        vuoi dalle Impostazioni.
+      </p>
+      <div class="flex gap-3 mt-4">
+        <button class="btn btn-glass w-full" data-scelta-sesso="maschio">Maschio</button>
+        <button class="btn btn-glass w-full" data-scelta-sesso="femmina">Femmina</button>
+      </div>
+    `,
+    onMount: (body) => {
+      body.querySelectorAll('[data-scelta-sesso]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          store.setSex(btn.dataset.sceltaSesso);
+          closeModal();
+          // La schermata sotto puo' gia' mostrare medaglie e figura del corpo:
+          // senza ridisegnarla resterebbe quella di prima della risposta.
+          refreshRoute();
+        });
+      });
+    },
+  });
+}
+
+chiediSessoAllaPrimaApertura();
 
 // Una misura appena la schermata esiste e una quando iOS ha finito di animare
 // l'apertura: se nel frattempo l'altezza non e' cambiata, la seconda non

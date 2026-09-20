@@ -102,7 +102,11 @@ function emptySet(kind) {
 }
 
 function defaultState() {
-  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90, sex: 'maschio', meals: [], goals: { kcal: null, protein: null } };
+  // sexChosen distingue "non l'ha ancora detto" da "ha scelto maschio": senza,
+  // il valore di partenza si confonde con una risposta e la domanda della prima
+  // apertura non saprebbe quando farsi viva. I dati gia' salvati non hanno la
+  // chiave, quindi la domanda arriva una volta anche a chi usa l'app da prima.
+  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90, sex: 'maschio', sexChosen: false, meals: [], goals: { kcal: null, protein: null } };
 }
 
 // Un obiettivo o e' un numero positivo o non c'e' affatto: lo zero e le cose
@@ -197,6 +201,7 @@ const store = {
   // ---- Sesso (figura e traguardi della mappa dei muscoli) ----
   setSex(sex) {
     state.sex = sex === 'femmina' ? 'femmina' : 'maschio';
+    state.sexChosen = true;
     save();
   },
 

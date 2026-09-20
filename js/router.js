@@ -211,6 +211,8 @@ function initRouter() {
 }
 
 window.MyGym = window.MyGym || {};
-Object.assign(window.MyGym, { navigate, initRouter });
+// refreshRoute ridisegna la schermata dove si e' senza passare da un cambio di
+// hash: serve a chi modifica lo stato da fuori le viste (vedi app.js).
+Object.assign(window.MyGym, { navigate, initRouter, refreshRoute: route });
 
 })();
