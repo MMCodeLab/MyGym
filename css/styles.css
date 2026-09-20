@@ -156,17 +156,20 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Background blobs ---------- */
 .bg-blobs {
   position: fixed;
-  /* Deborda sotto il bordo dello schermo. All'apertura della PWA iOS riporta
-     per un istante un viewport piu' corto del vero: uno strato fixed alto
-     esattamente quanto il viewport resterebbe corto e sotto la barra si
-     vedrebbe una striscia scura (la base senza il bagliore) finche' non
-     tocchi lo schermo. Essendo solo decorativo puo' debordare: le posizioni
-     delle macchie sono espresse rispetto al viewport, non a questo box, cosi'
-     restano dove sono. */
+  /* Questo strato e' il fondo vero dell'app, e deborda di 25vh sotto il bordo
+     dello schermo. All'apertura della PWA iOS misura un viewport piu' corto
+     del vero, dipinge, e solo dopo lo allunga fino al bordo: il fondo di body
+     copre il riquadro della prima misura, quindi la striscia in fondo resta
+     senza niente sopra - nera - finche' uno scorrimento non obbliga a
+     ridisegnare. Qui invece 25vh sono gia' dipinti dal primo disegno, perche'
+     vh guarda lo schermo e non la misura sbagliata.
+     Le posizioni delle macchie sono espresse in vh, cioe' rispetto al
+     viewport e non a questo box piu' alto, cosi' restano dove sono. */
   inset: 0 0 -25vh 0;
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
+  background: var(--bg);
 }
 
 .blob {
