@@ -22,16 +22,21 @@ function computeWorkoutVolume(w) {
 // ---------- Grafico: andamento del carico sollevato, per allenamento ----------
 // Stesso stile "a linea morbida" di prima, ma un punto per allenamento
 // (in ordine cronologico) invece che un punto per settimana.
-// In Progressi sta in piccolo con gli ultimi 10 allenamenti; toccandolo si
-// apre questa schermata, dove e' grande (large) e ne mostra fino a 30.
+// Con monthKey il grafico mostra tutto e solo quel mese: sono al massimo una
+// trentina di allenamenti, ci stanno. Senza, ricade sugli ultimi 10 (o 30
+// nella versione grande), che e' come si comportava prima.
 
-function volumeChartHtml(workouts, { large = false } = {}) {
-  const chronological = [...workouts].sort((a, b) => new Date(a.date) - new Date(b.date));
-  const recent = chronological.slice(large ? -30 : -10);
+function volumeChartHtml(workouts, { large = false, monthKey = null } = {}) {
+  const inScope = monthKey ? workouts.filter((w) => monthKeyOf(w.date) === monthKey) : workouts;
+  const chronological = [...inScope].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const recent = monthKey ? chronological : chronological.slice(large ? -30 : -10);
   const n = recent.length;
 
   if (n < 2) {
-    return `<p class="text-secondary text-center" style="padding:16px 4px 4px">Registra almeno 2 allenamenti con dei pesi per vedere l'andamento del carico.</p>`;
+    const testo = monthKey
+      ? `${primaMaiuscola(inMese(monthKey))} non ci sono abbastanza allenamenti con i pesi per disegnare l'andamento del carico.`
+      : "Registra almeno 2 allenamenti con dei pesi per vedere l'andamento del carico.";
+    return `<p class="text-secondary text-center" style="padding:16px 4px 4px">${testo}</p>`;
   }
 
   const values = recent.map((w) => Math.round(computeWorkoutVolume(w)));
@@ -91,10 +96,83 @@ function volumeChartHtml(workouts, { large = false } = {}) {
   `;
 }
 
-// ---------- Streak mensile: pallini colorati nei giorni allenati ----------
+// ---------- Il mese che si sta guardando ----------
+// La scelta e' condivisa fra Progressi e questa schermata: se sfogli fino ad
+// agosto e poi tocchi il grafico per aprirlo in grande, ti ritrovi ad agosto
+// e non di nuovo al mese corrente.
+
+let selectedMonth = null;
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dateKey(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function monthKeyOf(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+}
+
+// "ad agosto", "a settembre": la d eufonica davanti a vocale, altrimenti si
+// legge male ad alta voce.
+function inMese(key) {
+  const nome = monthLabel(key);
+  return `${'aeiou'.includes(nome[0]) ? 'ad' : 'a'} ${nome}`;
+}
+
+function primaMaiuscola(testo) {
+  return testo.charAt(0).toUpperCase() + testo.slice(1);
+}
+
+function monthLabel(key) {
+  const [anno, mese] = key.split('-');
+  return new Date(Number(anno), Number(mese) - 1, 1)
+    .toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+}
+
+// I mesi che hanno almeno un allenamento, piu' quello corrente: anche se in
+// questo mese non ti sei ancora mosso, sfogliando devi poterci tornare.
+function monthsWithWorkouts(workouts) {
+  const chiavi = new Set(workouts.map((w) => monthKeyOf(w.date)));
+  chiavi.add(monthKeyOf(new Date().toISOString()));
+  return [...chiavi].sort();
+}
+
+// L'ultimo della lista ordinata e' il mese corrente, che e' sempre dentro:
+// quindi al primo ingresso si apre su questo mese, come prima.
+function activeMonth(workouts) {
+  const mesi = monthsWithWorkouts(workouts);
+  if (!selectedMonth || !mesi.includes(selectedMonth)) selectedMonth = mesi[mesi.length - 1];
+  return selectedMonth;
+}
+
+function monthNavHtml(workouts) {
+  const mesi = monthsWithWorkouts(workouts);
+  const indice = mesi.indexOf(activeMonth(workouts));
+  return `
+    <div class="recap-month month-nav">
+      <button class="icon-btn" data-month-prev ${indice <= 0 ? 'disabled' : ''} aria-label="Mese precedente">${icon('back')}</button>
+      <span class="recap-month-label">${escapeHtml(monthLabel(mesi[indice]))}</span>
+      <button class="icon-btn recap-next" data-month-next ${indice >= mesi.length - 1 ? 'disabled' : ''} aria-label="Mese successivo">${icon('back')}</button>
+    </div>`;
+}
+
+// onChange decide cosa ridisegnare: Progressi rifa' la sua pagina, lo storico
+// la sua. stopPropagation perche' in Progressi le frecce finiscono dentro una
+// card che al tocco apre lo storico.
+function bindMonthNav(container, workouts, onChange) {
+  const mesi = monthsWithWorkouts(workouts);
+  const indice = mesi.indexOf(activeMonth(workouts));
+  const vai = (nuovoIndice) => (e) => {
+    e.stopPropagation();
+    if (nuovoIndice < 0 || nuovoIndice > mesi.length - 1) return;
+    selectedMonth = mesi[nuovoIndice];
+    onChange();
+  };
+  const prev = container.querySelector('[data-month-prev]');
+  const next = container.querySelector('[data-month-next]');
+  if (prev) prev.addEventListener('click', vai(indice - 1));
+  if (next) next.addEventListener('click', vai(indice + 1));
+}
+
+// ---------- Streak mensile: pallini colorati nei giorni allenati ----------
 
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 
@@ -110,12 +188,16 @@ function currentStreak(workoutDateKeys) {
   return count;
 }
 
-function streakGridHtml(workouts) {
+// Con nav a true, l'intestazione del calendario diventa le frecce del mese:
+// stanno dentro la card invece che sopra, cosi' il nome del mese non e'
+// scritto due volte a due centimetri di distanza.
+function streakGridHtml(workouts, monthKey, { nav = false } = {}) {
   const allKeys = new Set(workouts.map((w) => dateKey(new Date(w.date))));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const year = today.getFullYear();
-  const month = today.getMonth();
+  const key = monthKey || monthKeyOf(today.toISOString());
+  const year = Number(key.split('-')[0]);
+  const month = Number(key.split('-')[1]) - 1;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // 0 = Lunedi
 
@@ -131,16 +213,24 @@ function streakGridHtml(workouts) {
     cells.push(`<span class="streak-cell ${cls}" title="${escapeHtml(title)}${filled ? ' — allenato' : ''}">${day}</span>`);
   }
 
-  const monthLabel = today.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-  const streak = currentStreak(allKeys);
-  const monthPrefix = `${year}-${pad2(month + 1)}`;
-  const workoutsThisMonth = [...allKeys].filter((k) => k.startsWith(monthPrefix)).length;
+  const workoutsThisMonth = [...allKeys].filter((k) => k.startsWith(key)).length;
+  const conteggio = `${workoutsThisMonth} allenament${workoutsThisMonth === 1 ? 'o' : 'i'}`;
+
+  // La striscia di giorni di fila riguarda oggi: scritta accanto a un mese
+  // vecchio direbbe una cosa che con quel mese non c'entra niente.
+  const isMeseCorrente = key === monthKeyOf(today.toISOString());
+  const streak = isMeseCorrente ? currentStreak(allKeys) : 0;
+
+  const intestazione = nav
+    ? `${monthNavHtml(workouts)}
+       <div class="text-secondary text-center" style="font-size:0.78rem;margin:-2px 0 10px">${conteggio}${streak > 0 ? ` · 🔥 ${streak} di fila` : ''}</div>`
+    : `<div class="flex items-center justify-between" style="margin-bottom:10px">
+         <span style="font-weight:700;font-size:0.9rem;text-transform:capitalize">${escapeHtml(monthLabel(key))}</span>
+         <span class="text-secondary" style="font-size:0.78rem">${conteggio}${streak > 0 ? ` · 🔥 ${streak} di fila` : ''}</span>
+       </div>`;
 
   return `
-    <div class="flex items-center justify-between" style="margin-bottom:10px">
-      <span style="font-weight:700;font-size:0.9rem;text-transform:capitalize">${escapeHtml(monthLabel)}</span>
-      <span class="text-secondary" style="font-size:0.78rem">${workoutsThisMonth} allenamenti${streak > 0 ? ` · 🔥 ${streak} di fila` : ''}</span>
-    </div>
+    ${intestazione}
     <div class="streak-weekdays">${WEEKDAY_LABELS.map((l) => `<span>${l}</span>`).join('')}</div>
     <div class="streak-grid">${cells.join('')}</div>
   `;
@@ -209,27 +299,40 @@ function render(container) {
     return;
   }
 
+  // Un mese per volta: la lista di tutti gli allenamenti messi in fila
+  // seppelliva quelli vecchi, e il grafico si fermava comunque agli ultimi 30.
+  const mese = activeMonth(workouts);
+  const delMese = workouts.filter((w) => monthKeyOf(w.date) === mese);
+
   container.innerHTML = `
     <div class="flex items-center gap-3">
       <button class="icon-btn" id="back-btn" aria-label="Indietro">${icon('back')}</button>
       <h1 class="section-title" style="margin:0">Allenamenti</h1>
     </div>
-    <p class="section-subtitle">${workouts.length} allenamenti registrati.</p>
+    <p class="section-subtitle">${workouts.length} allenament${workouts.length === 1 ? 'o' : 'i'} in tutto.</p>
 
-    <div class="card glass chart-card">
+    ${monthNavHtml(workouts)}
+
+    <div class="card glass chart-card mt-2">
       <div class="flex items-center gap-2" style="margin-bottom:6px">
         ${icon('chartBar')}
         <span style="font-weight:700;font-size:0.9rem">Carico per allenamento</span>
       </div>
-      ${volumeChartHtml(workouts, { large: true })}
+      ${volumeChartHtml(workouts, { large: true, monthKey: mese })}
     </div>
 
     <div id="history-list" class="mt-4">
-      ${workouts.map(historyCardHtml).join('')}
+      ${delMese.length ? delMese.map(historyCardHtml).join('') : `
+        <div class="empty-state glass">
+          <div class="empty-emoji">🗓️</div>
+          <div class="empty-title">Niente ${escapeHtml(inMese(mese))}</div>
+          <div class="empty-text">Con le frecce qui sopra ti sposti sugli altri mesi.</div>
+        </div>`}
     </div>
   `;
 
   container.querySelector('#back-btn').addEventListener('click', () => navigate('#/progressi'));
+  bindMonthNav(container, workouts, () => render(container));
 
   container.querySelectorAll('[data-workout-id]').forEach((card) => {
     card.addEventListener('click', (e) => {
@@ -260,6 +363,6 @@ function render(container) {
 window.MyGym = window.MyGym || {};
 window.MyGym.views = window.MyGym.views || {};
 // Calendario e grafico stanno anche in cima a Progressi (vedi progress.js).
-window.MyGym.views.workoutHistory = { render, streakGridHtml, volumeChartHtml };
+window.MyGym.views.workoutHistory = { render, streakGridHtml, volumeChartHtml, monthNavHtml, bindMonthNav, activeMonth, monthLabel };
 
 })();

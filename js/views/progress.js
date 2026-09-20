@@ -34,18 +34,21 @@ function formatRecordTime(iso) {
 function workoutsSectionHtml() {
   const history = window.MyGym.views.workoutHistory;
   const workouts = store.getWorkouts();
+  // Le frecce del mese stanno dentro il calendario e comandano anche il
+  // grafico qui sotto: sono due riquadri ma sono lo stesso mese.
+  const mese = history.activeMonth(workouts);
 
   return `
     <div class="page-section">
       <h3>Allenamenti</h3>
-      <div class="card glass chart-card">${history.streakGridHtml(workouts)}</div>
+      <div class="card glass">${history.streakGridHtml(workouts, mese, { nav: true })}</div>
       <div class="card glass chart-card" id="volume-chart-card">
         <div class="flex items-center gap-2" style="margin-bottom:6px">
           ${icon('chartBar')}
           <span style="font-weight:700;font-size:0.9rem">Carico per allenamento</span>
           <span class="chart-card-go">${icon('chevronDown')}</span>
         </div>
-        ${history.volumeChartHtml(workouts)}
+        ${history.volumeChartHtml(workouts, { monthKey: mese })}
       </div>
     </div>
   `;
@@ -355,6 +358,7 @@ function render(container) {
 
   container.querySelector('#recap-btn').addEventListener('click', () => navigate('#/resoconto'));
   container.querySelector('#volume-chart-card').addEventListener('click', () => navigate('#/storico'));
+  window.MyGym.views.workoutHistory.bindMonthNav(container, store.getWorkouts(), () => render(container));
   container.querySelector('#measures-link').addEventListener('click', () => navigate('#/misure'));
 
   const recordsToggle = container.querySelector('#records-toggle');
