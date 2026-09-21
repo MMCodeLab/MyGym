@@ -79,6 +79,14 @@
   /* Verde delle barre degli obiettivi quando si e' quasi arrivati. Come
      --warning cambia col tema, perche' su fondo chiaro sbiadirebbe. */
   --goal-near: #22c55e;
+
+  /* Streak (js/streak.js): la striscia che lega i giorni della stessa streak
+     e le scritte nei colori delle tre fiamme. Anche queste cambiano col tema:
+     l'arancio e l'azzurro accesi, sul vetro chiaro, non si leggerebbero. */
+  --streak-band: rgba(255, 122, 28, 0.22);
+  --streak-fire-text: #ff9a4d;
+  --streak-sleep-text: #c4b5fd;
+  --streak-ice-text: #7dd3fc;
 }
 
 /* ---------- Light theme ---------- */
@@ -107,6 +115,11 @@
 
   --warning: #a56100;
   --goal-near: #15803d;
+
+  --streak-band: rgba(255, 122, 28, 0.2);
+  --streak-fire-text: #c2410c;
+  --streak-sleep-text: #6d28d9;
+  --streak-ice-text: #0369a1;
 }
 
 * { box-sizing: border-box; }
@@ -1485,13 +1498,187 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-tertiary);
   opacity: .4;
 }
-.streak-cell-filled {
-  background: var(--accent-gradient);
+/* I colori delle tre fiamme della streak (js/streak.js). Il giorno in
+   palestra e' pieno, quelli saltati restano pallini vuoti appena tinti: si
+   deve capire a colpo d'occhio che li' in palestra non ci sei andato. */
+.streak-cell-attiva {
+  background: linear-gradient(155deg, #ffc247, #ff6a1c 55%, #e3262b);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 2px 8px rgba(255, 90, 31, 0.4);
+}
+.streak-cell-dormiente {
+  background: rgba(139, 92, 246, 0.16);
+  border: 1.5px solid rgba(167, 139, 250, 0.8);
+  color: var(--streak-sleep-text);
+}
+.streak-cell-ghiacciata {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1.5px solid rgba(125, 211, 252, 0.85);
+  color: var(--streak-ice-text);
+}
+/* La "z" di chi dorme, come sulla fiamma viola. */
+.streak-cell-dormiente::after {
+  content: 'z';
+  position: absolute;
+  top: -7px;
+  right: -4px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #a78bfa;
 }
 /* Oggi, nella settimana della scelta del giorno: un anello, pieno o vuoto che sia. */
 .streak-cell-today { outline: 2px solid var(--accent-a); outline-offset: 2px; }
+
+/* La striscia che lega i giorni della stessa streak: passa dietro ai pallini
+   e sborda di 3px per lato (meta' dello spazio fra le colonne), cosi' si
+   salda con quella della casella accanto. Parte e finisce al centro del primo
+   e dell'ultimo giorno; a capo della settimana si ferma sul bordo della riga. */
+.streak-day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.streak-day > .streak-cell { position: relative; z-index: 1; }
+.streak-day.in-band::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -3px;
+  right: -3px;
+  height: 18px;
+  transform: translateY(-50%);
+  background: var(--streak-band);
+}
+.streak-day.band-start::before { left: 50%; }
+.streak-day.band-end::before { right: 50%; }
+.streak-day.band-row-start:not(.band-start)::before { left: 0; }
+.streak-day.band-row-end:not(.band-end)::before { right: 0; }
+
+.streak-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  margin-top: 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.streak-legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+/* ---------- Streak: fiamme, card in Progressi, fiammella in alto ---------- */
+.flame { display: block; flex-shrink: 0; overflow: visible; }
+.flame-attiva { filter: drop-shadow(0 0 5px rgba(255, 90, 31, 0.5)); }
+.flame-dormiente { filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.5)); }
+.flame-ghiacciata { filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.5)); }
+/* Spenta: la fiamma accesa, senza colore. */
+.flame-spenta { filter: grayscale(1); opacity: 0.4; }
+
+/* La fiamma accesa tremola, quella che dorme respira mentre gli zZ salgono,
+   i fiocchi di quella ghiacciata girano piano. Solo dove la fiamma e' grande:
+   nel calendario e in alto starebbe li' a distrarre. Con "riduci movimento"
+   si fermano da sole, grazie alla regola in fondo al foglio. */
+.flame-anim .flame-body,
+.flame-anim .flame-core,
+.flame-anim .flame-spark,
+.flame-anim .flame-z1,
+.flame-anim .flame-z2 {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.flame-anim.flame-attiva .flame-body { animation: flame-flicker 1.6s ease-in-out infinite alternate; }
+.flame-anim.flame-attiva .flame-core { animation: flame-core 1.1s ease-in-out infinite alternate; }
+.flame-anim.flame-attiva .flame-spark { animation: flame-spark 2.2s ease-in-out infinite; }
+.flame-anim.flame-dormiente { transform-origin: 50% 100%; animation: flame-breathe 3.4s ease-in-out infinite; }
+.flame-anim .flame-z1 { animation: flame-z 3s ease-in-out infinite; }
+.flame-anim .flame-z2 { animation: flame-z 3s ease-in-out 0.9s infinite; }
+.flame-anim .flame-flakes path {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: flame-flake 10s linear infinite;
+}
+@keyframes flame-flicker {
+  0% { transform: scale(1, 1) skewX(0deg); }
+  50% { transform: scale(1.015, 1.045) skewX(-1.5deg); }
+  100% { transform: scale(0.99, 1.02) skewX(1.2deg); }
+}
+@keyframes flame-core { from { transform: scale(1, 1); } to { transform: scale(0.94, 1.07); } }
+@keyframes flame-spark {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(-3px); opacity: 0.65; }
+}
+@keyframes flame-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.03, 0.97); }
+}
+@keyframes flame-z {
+  0% { opacity: 0; transform: translate(-2px, 3px); }
+  30%, 70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(2px, -4px); }
+}
+@keyframes flame-flake { to { transform: rotate(360deg); } }
+
+/* La streak di oggi, in cima a Progressi. Dietro la fiamma un alone del suo
+   colore; toccandola si apre la spiegazione delle tre fiamme. */
+.streak-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.streak-card::before {
+  content: '';
+  position: absolute;
+  left: -34px;
+  top: 50%;
+  width: 180px;
+  height: 180px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--streak-halo) 0%, transparent 68%);
+  pointer-events: none;
+}
+.streak-card-attiva { --streak-halo: rgba(255, 106, 28, 0.3); --streak-state: var(--streak-fire-text); }
+.streak-card-dormiente { --streak-halo: rgba(139, 92, 246, 0.3); --streak-state: var(--streak-sleep-text); }
+.streak-card-ghiacciata { --streak-halo: rgba(56, 189, 248, 0.28); --streak-state: var(--streak-ice-text); }
+.streak-card-spenta { --streak-halo: rgba(148, 163, 184, 0.16); --streak-state: var(--text-secondary); }
+.streak-card-flame, .streak-card-text { position: relative; }
+.streak-card-text { flex: 1; min-width: 0; }
+.streak-card-count { font-family: var(--font-display); font-weight: 700; font-size: 0.98rem; }
+.streak-card-count strong { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; margin-right: 2px; }
+.streak-card-state { margin-top: 3px; font-size: 0.8rem; font-weight: 700; color: var(--streak-state); }
+.streak-card-hint { margin-top: 4px; font-size: 0.8rem; line-height: 1.35; color: var(--text-secondary); }
+.streak-card-record { margin-top: 6px; font-size: 0.72rem; font-weight: 600; color: var(--text-tertiary); }
+
+.streak-info { display: flex; flex-direction: column; gap: 16px; }
+.streak-info-row { display: flex; align-items: center; gap: 14px; }
+.streak-info-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.streak-info-text strong { font-family: var(--font-display); font-size: 0.95rem; }
+.streak-info-text span { font-size: 0.82rem; line-height: 1.35; color: var(--text-secondary); }
+.streak-info-note { font-size: 0.82rem; margin: 18px 0 0; }
+
+/* La fiammella in alto, accanto al nome dell'app: toccandola si va in
+   Progressi. Alta quanto il logo, cosi' la barra non cresce. */
+.streak-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 11px 2px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-primary);
+  transition: transform .2s var(--ease-spring);
+}
+.streak-chip[hidden] { display: none; }
+.streak-chip:active { transform: scale(0.93); }
+.streak-chip-spenta { color: var(--text-tertiary); }
 
 /* Testo cliccabile piccolo e discreto, per le azioni secondarie ("Mostra tutti"). */
 .text-link {

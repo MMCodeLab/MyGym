@@ -172,27 +172,22 @@ function bindMonthNav(container, workouts, onChange) {
   if (next) next.addEventListener('click', vai(indice + 1));
 }
 
-// ---------- Streak mensile: pallini colorati nei giorni allenati ----------
+// ---------- Calendario del mese: i giorni della streak ----------
+// Ogni giorno prende il colore della sua fiamma (vedi js/streak.js): acceso
+// se ti sei allenato, viola o azzurro se la streak dormiva o era ghiacciata,
+// con la striscia che lega i giorni della stessa streak. Sfogliando i mesi si
+// rivedono anche le streak passate. Il conto dei giorni di streak di oggi sta
+// nella card qui sopra, in Progressi.
 
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
-
-function currentStreak(workoutDateKeys) {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  if (!workoutDateKeys.has(dateKey(d))) d.setDate(d.getDate() - 1); // oggi non ancora allenato: non azzerare, controlla da ieri
-  let count = 0;
-  while (workoutDateKeys.has(dateKey(d))) {
-    count++;
-    d.setDate(d.getDate() - 1);
-  }
-  return count;
-}
 
 // Con nav a true, l'intestazione del calendario diventa le frecce del mese:
 // stanno dentro la card invece che sopra, cosi' il nome del mese non e'
 // scritto due volte a due centimetri di distanza.
 function streakGridHtml(workouts, monthKey, { nav = false } = {}) {
+  const { computeStreak, dayCellHtml, legendHtml } = window.MyGym.streak;
   const allKeys = new Set(workouts.map((w) => dateKey(new Date(w.date))));
+  const streak = computeStreak(workouts);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const key = monthKey || monthKeyOf(today.toISOString());
@@ -204,35 +199,25 @@ function streakGridHtml(workouts, monthKey, { nav = false } = {}) {
   const cells = [];
   for (let i = 0; i < firstWeekday; i++) cells.push('<span class="streak-cell streak-cell-pad"></span>');
   for (let day = 1; day <= daysInMonth; day++) {
-    const cellDate = new Date(year, month, day);
-    const key = dateKey(cellDate);
-    const filled = allKeys.has(key);
-    const isFuture = cellDate > today;
-    const cls = filled ? 'streak-cell-filled' : (isFuture ? 'streak-cell-future' : 'streak-cell-empty');
-    const title = cellDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
-    cells.push(`<span class="streak-cell ${cls}" title="${escapeHtml(title)}${filled ? ' — allenato' : ''}">${day}</span>`);
+    cells.push(dayCellHtml(new Date(year, month, day), streak, { col: (firstWeekday + day - 1) % 7 }));
   }
 
   const workoutsThisMonth = [...allKeys].filter((k) => k.startsWith(key)).length;
   const conteggio = `${workoutsThisMonth} allenament${workoutsThisMonth === 1 ? 'o' : 'i'}`;
 
-  // La striscia di giorni di fila riguarda oggi: scritta accanto a un mese
-  // vecchio direbbe una cosa che con quel mese non c'entra niente.
-  const isMeseCorrente = key === monthKeyOf(today.toISOString());
-  const streak = isMeseCorrente ? currentStreak(allKeys) : 0;
-
   const intestazione = nav
     ? `${monthNavHtml(workouts)}
-       <div class="text-secondary text-center" style="font-size:0.78rem;margin:-2px 0 10px">${conteggio}${streak > 0 ? ` · 🔥 ${streak} di fila` : ''}</div>`
+       <div class="text-secondary text-center" style="font-size:0.78rem;margin:-2px 0 10px">${conteggio}</div>`
     : `<div class="flex items-center justify-between" style="margin-bottom:10px">
          <span style="font-weight:700;font-size:0.9rem;text-transform:capitalize">${escapeHtml(monthLabel(key))}</span>
-         <span class="text-secondary" style="font-size:0.78rem">${conteggio}${streak > 0 ? ` · 🔥 ${streak} di fila` : ''}</span>
+         <span class="text-secondary" style="font-size:0.78rem">${conteggio}</span>
        </div>`;
 
   return `
     ${intestazione}
     <div class="streak-weekdays">${WEEKDAY_LABELS.map((l) => `<span>${l}</span>`).join('')}</div>
     <div class="streak-grid">${cells.join('')}</div>
+    ${legendHtml()}
   `;
 }
 

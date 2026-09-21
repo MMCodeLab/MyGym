@@ -311,9 +311,12 @@ function dateKey(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 
 // La settimana in corso, da lunedi' a domenica, con gli stessi pallini del
-// calendario di Progressi: prima di scegliere si vede se si e' in pari.
+// calendario di Progressi (anche i colori della streak): prima di scegliere si
+// vede se si e' in pari, e se la fiamma sta dormendo.
 function weekStripHtml(workouts) {
+  const { computeStreak, dayCellHtml } = window.MyGym.streak;
   const trained = new Set(workouts.map((w) => dateKey(new Date(w.date))));
+  const streak = computeStreak(workouts);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const monday = new Date(today);
@@ -323,11 +326,8 @@ function weekStripHtml(workouts) {
   const cells = WEEKDAY_LABELS.map((_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    const filled = trained.has(dateKey(d));
-    if (filled) count += 1;
-    const cls = filled ? 'streak-cell-filled' : (d > today ? 'streak-cell-future' : 'streak-cell-empty');
-    const isToday = d.getTime() === today.getTime();
-    return `<span class="streak-cell ${cls}${isToday ? ' streak-cell-today' : ''}">${d.getDate()}</span>`;
+    if (trained.has(dateKey(d))) count += 1;
+    return dayCellHtml(d, streak, { col: i, isToday: d.getTime() === today.getTime() });
   }).join('');
 
   return `

@@ -38,9 +38,11 @@ function workoutsSectionHtml() {
   // grafico qui sotto: sono due riquadri ma sono lo stesso mese.
   const mese = history.activeMonth(workouts);
 
+  // La streak di oggi sta sopra al calendario, che mostra quelle di ogni mese.
   return `
     <div class="page-section">
       <h3>Allenamenti</h3>
+      ${window.MyGym.streak.cardHtml()}
       <div class="card glass">${history.streakGridHtml(workouts, mese, { nav: true })}</div>
       <div class="card glass chart-card" id="volume-chart-card">
         <div class="flex items-center gap-2" style="margin-bottom:6px">
@@ -357,6 +359,7 @@ function render(container) {
   `;
 
   container.querySelector('#recap-btn').addEventListener('click', () => navigate('#/resoconto'));
+  window.MyGym.streak.bindCard(container);
   container.querySelector('#volume-chart-card').addEventListener('click', () => navigate('#/storico'));
   window.MyGym.views.workoutHistory.bindMonthNav(container, store.getWorkouts(), () => render(container));
   container.querySelector('#measures-link').addEventListener('click', () => navigate('#/misure'));
