@@ -327,7 +327,7 @@ function weekStripHtml(workouts) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     if (trained.has(dateKey(d))) count += 1;
-    return dayCellHtml(d, streak, { col: i, isToday: d.getTime() === today.getTime() });
+    return dayCellHtml(d, streak, { isToday: d.getTime() === today.getTime() });
   }).join('');
 
   return `

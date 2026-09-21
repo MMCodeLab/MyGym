@@ -90,24 +90,17 @@ function computeStreak(workouts, now) {
   });
 
   // Com'era la streak giorno per giorno, per i calendari: accesa nei giorni
-  // di palestra, addormentata o ghiacciata in quelli saltati. La striscia
-  // lega il primo e l'ultimo allenamento della stessa streak; i giorni in cui
-  // si e' spenta restano fuori, cosi' si vede dove e' finita.
+  // di palestra, addormentata o ghiacciata in quelli saltati. Il giorno in cui
+  // si e' spenta resta vuoto, cosi' si vede dove e' finita.
   const giorni = new Map();
   catene.forEach((c) => {
     const fatti = new Set(c.giorni);
-    const lunga = c.giorni.length > 1;
     // Dopo l'ultimo allenamento si segnano solo i giorni gia' finiti.
     const fine = Math.max(c.ultimo, Math.min(c.ultimo + MAX_SALTATI, oggi - 1));
     let saltati = 0;
     for (let n = c.primo; n <= fine; n++) {
       saltati = fatti.has(n) ? 0 : saltati + 1;
-      giorni.set(n, {
-        stato: STATI_VIVI[saltati],
-        striscia: lunga && n <= c.ultimo,
-        inizio: lunga && n === c.primo,
-        fine: lunga && n === c.ultimo,
-      });
+      giorni.set(n, STATI_VIVI[saltati]);
     }
   });
 
@@ -264,20 +257,14 @@ function flameSvg(stato, { size = 48, compact = false, animated = false } = {}) 
 
 // ---------- Calendari ----------
 // Il mese di Progressi e la settimana di "Inizia allenamento" disegnano i
-// giorni allo stesso modo: il pallino del giorno e, dietro, la striscia che
-// lo lega agli altri giorni della stessa streak. col e' la colonna
-// (0 = lunedi'): a capo della settimana la striscia si ferma sul bordo invece
-// di uscire dalla riga.
+// giorni allo stesso modo: un pallino per giorno, nel colore della sua fiamma.
 
-function dayCellHtml(date, streak, { col = -1, isToday = false } = {}) {
+function dayCellHtml(date, streak, { isToday = false } = {}) {
   const n = dayNumber(date);
-  const g = streak.giorni.get(n);
-  const cls = g ? `streak-cell-${g.stato}` : (n > streak.oggi ? 'streak-cell-future' : 'streak-cell-empty');
-  const titolo = date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) + (g ? ` — ${STATI[g.stato].giorno}` : '');
-  const striscia = g && g.striscia
-    ? ` in-band${g.inizio ? ' band-start' : ''}${g.fine ? ' band-end' : ''}${col === 0 ? ' band-row-start' : ''}${col === 6 ? ' band-row-end' : ''}`
-    : '';
-  return `<span class="streak-day${striscia}"><span class="streak-cell ${cls}${isToday ? ' streak-cell-today' : ''}" title="${escapeHtml(titolo)}">${date.getDate()}</span></span>`;
+  const stato = streak.giorni.get(n);
+  const cls = stato ? `streak-cell-${stato}` : (n > streak.oggi ? 'streak-cell-future' : 'streak-cell-empty');
+  const titolo = date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) + (stato ? ` — ${STATI[stato].giorno}` : '');
+  return `<span class="streak-cell ${cls}${isToday ? ' streak-cell-today' : ''}" title="${escapeHtml(titolo)}">${date.getDate()}</span>`;
 }
 
 function legendHtml() {

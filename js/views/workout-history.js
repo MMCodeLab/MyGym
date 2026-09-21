@@ -174,10 +174,9 @@ function bindMonthNav(container, workouts, onChange) {
 
 // ---------- Calendario del mese: i giorni della streak ----------
 // Ogni giorno prende il colore della sua fiamma (vedi js/streak.js): acceso
-// se ti sei allenato, viola o azzurro se la streak dormiva o era ghiacciata,
-// con la striscia che lega i giorni della stessa streak. Sfogliando i mesi si
-// rivedono anche le streak passate. Il conto dei giorni di streak di oggi sta
-// nella card qui sopra, in Progressi.
+// se ti sei allenato, viola o azzurro se la streak dormiva o era ghiacciata.
+// Sfogliando i mesi si rivedono anche le streak passate. Il conto dei giorni
+// di streak di oggi sta nella card qui sopra, in Progressi.
 
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 
@@ -199,7 +198,7 @@ function streakGridHtml(workouts, monthKey, { nav = false } = {}) {
   const cells = [];
   for (let i = 0; i < firstWeekday; i++) cells.push('<span class="streak-cell streak-cell-pad"></span>');
   for (let day = 1; day <= daysInMonth; day++) {
-    cells.push(dayCellHtml(new Date(year, month, day), streak, { col: (firstWeekday + day - 1) % 7 }));
+    cells.push(dayCellHtml(new Date(year, month, day), streak));
   }
 
   const workoutsThisMonth = [...allKeys].filter((k) => k.startsWith(key)).length;

@@ -80,10 +80,9 @@
      --warning cambia col tema, perche' su fondo chiaro sbiadirebbe. */
   --goal-near: #22c55e;
 
-  /* Streak (js/streak.js): la striscia che lega i giorni della stessa streak
-     e le scritte nei colori delle tre fiamme. Anche queste cambiano col tema:
-     l'arancio e l'azzurro accesi, sul vetro chiaro, non si leggerebbero. */
-  --streak-band: rgba(255, 122, 28, 0.22);
+  /* Streak (js/streak.js): le scritte nei colori delle tre fiamme. Anche
+     queste cambiano col tema: l'arancio e l'azzurro accesi, sul vetro chiaro,
+     non si leggerebbero. */
   --streak-fire-text: #ff9a4d;
   --streak-sleep-text: #c4b5fd;
   --streak-ice-text: #7dd3fc;
@@ -116,7 +115,6 @@
   --warning: #a56100;
   --goal-near: #15803d;
 
-  --streak-band: rgba(255, 122, 28, 0.2);
   --streak-fire-text: #c2410c;
   --streak-sleep-text: #6d28d9;
   --streak-ice-text: #0369a1;
@@ -1507,6 +1505,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 2px 8px rgba(255, 90, 31, 0.4);
 }
 .streak-cell-dormiente {
+  position: relative;
   background: rgba(139, 92, 246, 0.16);
   border: 1.5px solid rgba(167, 139, 250, 0.8);
   color: var(--streak-sleep-text);
@@ -1528,32 +1527,6 @@ a { color: inherit; text-decoration: none; }
 }
 /* Oggi, nella settimana della scelta del giorno: un anello, pieno o vuoto che sia. */
 .streak-cell-today { outline: 2px solid var(--accent-a); outline-offset: 2px; }
-
-/* La striscia che lega i giorni della stessa streak: passa dietro ai pallini
-   e sborda di 3px per lato (meta' dello spazio fra le colonne), cosi' si
-   salda con quella della casella accanto. Parte e finisce al centro del primo
-   e dell'ultimo giorno; a capo della settimana si ferma sul bordo della riga. */
-.streak-day {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.streak-day > .streak-cell { position: relative; z-index: 1; }
-.streak-day.in-band::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: -3px;
-  right: -3px;
-  height: 18px;
-  transform: translateY(-50%);
-  background: var(--streak-band);
-}
-.streak-day.band-start::before { left: 50%; }
-.streak-day.band-end::before { right: 50%; }
-.streak-day.band-row-start:not(.band-start)::before { left: 0; }
-.streak-day.band-row-end:not(.band-end)::before { right: 0; }
 
 .streak-legend {
   display: flex;
