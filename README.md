@@ -23,11 +23,13 @@ Nessun account, nessuna pubblicità: solo uno strumento semplice per tenere orga
 - Elenco **giorni** di allenamento: crea, rinomina, elimina, con anteprima dei gruppi muscolari coinvolti.
 - Dentro ogni giorno: aggiungi/rimuovi esercizi dalla tua libreria, imposta serie × ripetizioni.
 - Libreria **esercizi** globale: crea un esercizio scegliendo nome, fino a 3 parti del corpo e immagine illustrativa suggerita automaticamente (con descrizione tradotta in italiano).
-- **Inizia allenamento**: la scelta del giorno mostra la settimana in corso a pallini e una card per ogni giorno (foto degli esercizi, muscoli, da quanto non lo fai); il giorno che tocca, quello dopo l'ultimo allenato, è già scelto. Poi cronometro, registrazione serie×reps×kg per ogni esercizio con suggerimenti dal giorno scelto, riepilogo finale.
+- **Inizia allenamento**: la scelta del giorno mostra la settimana in corso a pallini, con i colori della streak, e una card per ogni giorno (foto degli esercizi, muscoli, da quanto non lo fai); il giorno che tocca, quello dopo l'ultimo allenato, è già scelto. Poi cronometro, registrazione serie×reps×kg per ogni esercizio con suggerimenti dal giorno scelto, riepilogo finale.
 - **Esercizi extra**: durante l'allenamento si possono aggiungere esercizi che non sono nella scheda del giorno (nella finestra "Aggiungi esercizio" stanno sotto la scheda, e in allenamento hanno l'etichetta "Extra"). Quando termini, l'app chiede se inserirli nella scheda, con le serie e le ripetizioni fatte davvero, o lasciarli solo per quel giorno; quelli scritti a mano entrano anche nella libreria, con la foto trovata in automatico.
 - **Suggerimento del carico**: sotto ogni esercizio di forza compaiono l'ultima prestazione e il consiglio per oggi (almeno 8 ripetizioni l'ultima volta → +2,5 kg, altrimenti stesso peso e una ripetizione in più). Toccando la riga si compila la prima serie ancora vuota.
-- **Progressi**: in cima il calendario del mese a pallini e il grafico del carico (toccandolo si apre in grande, con gli allenamenti sotto), poi peso attuale, massa corporea e grafico del peso (toccandoli si apre lo storico delle misurazioni). Dei record personali se ne vedono due, gli altri con "Mostra tutti".
-- **Sfogliare i mesi**: le frecce sopra il calendario spostano insieme calendario, conteggio e grafico del carico, e le stesse frecce ci sono nella schermata "Allenamenti", dove lista e grafico grande mostrano il mese scelto (il totale generale resta sotto al titolo). Il mese è condiviso fra le due schermate, e la striscia di giorni di fila compare solo sul mese corrente.
+- **Streak**: ogni giorno in palestra la fa crescere di uno. Dopo un giorno intero saltato la fiamma si addormenta (viola, con gli occhi chiusi), dopo due si ghiaccia (di cristallo, coi fiocchi di neve), al terzo si spegne e si riparte da zero; allenandosi mentre dorme o è ghiacciata torna accesa. Nei giorni saltati il numero resta fermo, e oggi non conta come saltato finché non è finito. La fiammella col numero sta in alto accanto a MyGym, da ogni schermata (toccandola si va in Progressi).
+- **Traguardi della streak**: a 10, 20, 30… giorni, appena entri nell'app compare "Hai 10 giorni di streak: condividila con i tuoi amici!", una volta sola per traguardo e mai durante un allenamento. "Condividi" crea sul telefono un'immagine quadrata 1080×1080 con la fiamma e il numero e la passa al foglio di condivisione (con download del PNG come riserva); lo stesso pulsante c'è nella card della streak in Progressi.
+- **Progressi**: in cima la card della streak (fiamma dello stato di oggi, giorni, cosa fare oggi e record; toccandola si apre la spiegazione delle tre fiamme), poi il calendario del mese e il grafico del carico (toccandolo si apre in grande, con gli allenamenti sotto), poi peso attuale, massa corporea e grafico del peso (toccandoli si apre lo storico delle misurazioni). Nel calendario i giorni di palestra sono color fuoco, quelli in cui la streak dormiva o era ghiacciata restano pallini viola o azzurri, e una striscia lega i giorni della stessa streak. Dei record personali se ne vedono due, gli altri con "Mostra tutti".
+- **Sfogliare i mesi**: le frecce sopra il calendario spostano insieme calendario, conteggio e grafico del carico, e le stesse frecce ci sono nella schermata "Allenamenti", dove lista e grafico grande mostrano il mese scelto (il totale generale resta sotto al titolo). Il mese è condiviso fra le due schermate, e sfogliando si rivedono anche le streak passate.
 - **Resoconto mensile** (pulsante "Vediamo com'è andato il mese" accanto al titolo di Progressi): per ogni mese allenamenti, tempo, chili sollevati, la figura del corpo colorata per medaglia, i passaggi di livello guadagnati nel mese, i record battuti e il gruppo muscolare più allenato e più trascurato. Il pulsante "Condividi" genera un'immagine 1080×1920 e la passa al foglio di condivisione del telefono (con download del PNG come riserva).
 - **Misure del corpo** (Progressi → Peso e misure): peso, altezza, massa grassa e le circonferenze che si prendono col metro, con data e ora registrate da sole a ogni misurazione, indice di massa corporea e grafico dell'andamento di ogni misura.
 - **Virtual Personal Trainer**: genera una scheda su misura con l'IA (Groq) a partire da dati, obiettivo e livello — vedi [`cloudflare-worker/`](cloudflare-worker/worker.js) per la configurazione.
@@ -76,7 +78,8 @@ js/
   router.js                  routing via hash (#/, #/day/:id, #/esercizi, #/allenamento, #/progressi, #/storico, #/misure, #/resoconto, #/cibo, #/pt, #/impostazioni)
   components.js              helper UI condivisi (modali, toast, icone SVG)
   muscle-standards.js        traguardi delle medaglie e figura anatomica, condivisi tra Progressi e Resoconto
-  share-card.js              immagine 1080×1920 del resoconto mensile (canvas + navigator.share)
+  share-card.js              immagini da condividere: resoconto mensile 1080×1920 e streak 1080×1080 (canvas + navigator.share)
+  streak.js                  streak dei giorni di palestra: calcolo dallo storico, le tre fiamme SVG, card, fiammella in alto e traguardi ogni 10 giorni
   exercise-api.js            ricerca immagini esercizio + traduzione
   pwa-shell.js               avviso di nuova versione, stato offline, promemoria del backup
   views/
@@ -84,7 +87,7 @@ js/
     exercises.js                libreria esercizi
     workout.js                  Inizia allenamento (scelta del giorno, cronometro, serie/reps/kg, esercizi extra)
     workout-history.js          storico + grafico progressi
-    progress.js                 Progressi: calendario, grafici del carico e del peso, record personali, mappa dei muscoli
+    progress.js                 Progressi: card della streak, calendario, grafici del carico e del peso, record personali, mappa dei muscoli
     monthly-recap.js            Resoconto mensile e immagine da condividere
     measurements.js             Misure: peso, altezza, circonferenze e grafico dell'andamento
     food.js                     Cibo: analisi del piatto con l'IA e diario con gli obiettivi giornalieri
