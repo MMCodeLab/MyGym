@@ -15,12 +15,15 @@
 // pranzo.
 (function () {
 
-const { store, escapeHtml, openModal } = window.MyGym;
+const { store, escapeHtml, icon, openModal, closeModal, showToast, shareStreakCard } = window.MyGym;
 
 // Quanti giorni interi di fila si possono saltare senza perdere la streak.
 // Due giorni di riposo sono normali in palestra (il fine settimana, per
 // dire): una streak che si perdesse per quelli non motiverebbe nessuno.
 const MAX_SALTATI = 2;
+
+// Ogni quanti giorni di streak si festeggia, appena si entra nell'app.
+const OGNI_TRAGUARDO = 10;
 
 // L'ordine conta: e' quello dei giorni saltati (0, 1, 2).
 const STATI_VIVI = ['attiva', 'dormiente', 'ghiacciata'];
@@ -56,6 +59,13 @@ const GIORNO_MS = 86400000;
 function dayNumber(date) {
   const d = new Date(date);
   return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / GIORNO_MS);
+}
+
+// "AAAA-MM-GG", per i dati salvati: un numero di giorni nel backup non lo
+// leggerebbe nessuno.
+function dayKey(n) {
+  const d = new Date(n * GIORNO_MS);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
 // ---------- Il calcolo ----------
@@ -310,11 +320,12 @@ function cardHtml() {
     <div class="card glass streak-card streak-card-${stato}" id="streak-card" role="button" aria-label="Come funziona la streak">
       <span class="streak-card-flame">${flameSvg(stato, { size: 84, animated: stato !== 'spenta' })}</span>
       <div class="streak-card-text">
-        <div class="streak-card-count">${conta ? `<strong>${conta}</strong> ${conta === 1 ? 'giorno' : 'giorni'} di streak` : escapeHtml(STATI.spenta.label)}</div>
+        <div class="streak-card-count">${conta ? `<strong>${conta}</strong> ${conta === 1 ? 'giorno' : 'giorni'}` : escapeHtml(STATI.spenta.label)}</div>
         ${conta ? `<div class="streak-card-state">${escapeHtml(STATI[stato].label)}</div>` : ''}
         <div class="streak-card-hint">${escapeHtml(cardHint(streak))}</div>
         ${record ? `<div class="streak-card-record">${escapeHtml(record)}</div>` : ''}
       </div>
+      ${conta ? `<button class="icon-btn streak-share-btn" id="streak-share" aria-label="Condividi la streak">${icon('condividi')}</button>` : ''}
     </div>`;
 }
 
@@ -334,14 +345,44 @@ function openInfoModal() {
             </div>
           </div>`).join('')}
       </div>
-      <p class="text-secondary streak-info-note">Al terzo giorno senza palestra si spegne e si riparte da zero.</p>
+      <p class="text-secondary streak-info-note">Al terzo giorno senza palestra si spegne e si riparte da zero. Ogni ${OGNI_TRAGUARDO} giorni arriva un traguardo da condividere con gli amici.</p>
     `,
   });
 }
 
+// ---------- Condivisione ----------
+// Il pulsante resta spento finche' l'immagine non e' pronta: su un telefono
+// lento un secondo tocco ne preparerebbe un'altra.
+async function shareFrom(button, giorni) {
+  const etichetta = button.querySelector('.btn-label');
+  const prima = etichetta ? etichetta.textContent : '';
+  button.disabled = true;
+  if (etichetta) etichetta.textContent = 'Attendi…';
+  try {
+    const esito = await shareStreakCard({ giorni });
+    if (esito === 'download') showToast('Immagine salvata tra i download');
+    return esito;
+  } catch (e) {
+    showToast(e.message || 'Non sono riuscito a creare l\'immagine');
+    return 'error';
+  } finally {
+    button.disabled = false;
+    if (etichetta) etichetta.textContent = prima;
+  }
+}
+
 function bindCard(container) {
   const card = container.querySelector('#streak-card');
-  if (card) card.addEventListener('click', openInfoModal);
+  if (!card) return;
+  card.addEventListener('click', openInfoModal);
+  const share = card.querySelector('#streak-share');
+  if (share) {
+    share.addEventListener('click', (e) => {
+      // Il tocco non deve arrivare alla card, che aprirebbe la spiegazione.
+      e.stopPropagation();
+      shareFrom(share, currentStreak().conta);
+    });
+  }
 }
 
 // ---------- Fiammella in alto ----------
@@ -370,15 +411,73 @@ function renderChip() {
     : STATI.spenta.label);
 }
 
-// Chiamata da app.js all'avvio. Il ritorno dallo sfondo e' anche il momento
-// in cui puo' essere cambiato il giorno: la fiammella si riguarda li'.
+// ---------- Traguardo ogni 10 giorni ----------
+
+function openMilestoneModal(giorni) {
+  openModal({
+    title: 'Traguardo raggiunto',
+    bodyHtml: `
+      <div class="streak-milestone">
+        <div class="streak-milestone-flame">${flameSvg('attiva', { size: 132, animated: true })}</div>
+        <div class="streak-milestone-num">${giorni}</div>
+        <div class="streak-milestone-label">giorni di streak</div>
+        <p class="streak-milestone-text">Hai ${giorni} giorni di streak: condividila con i tuoi amici!</p>
+        <div class="flex gap-3 mt-4">
+          <button class="btn btn-glass w-full" id="milestone-later">Più tardi</button>
+          <button class="btn btn-primary w-full" id="milestone-share">${icon('condividi')}<span class="btn-label">Condividi</span></button>
+        </div>
+      </div>
+    `,
+    onMount: (body) => {
+      body.querySelector('#milestone-later').addEventListener('click', closeModal);
+      const share = body.querySelector('#milestone-share');
+      share.addEventListener('click', async () => {
+        const esito = await shareFrom(share, giorni);
+        // Se ha chiuso il foglio di condivisione senza scegliere, la finestra
+        // resta: magari voleva solo cambiare app.
+        if (esito === 'share' || esito === 'download') closeModal();
+      });
+    },
+  });
+}
+
+// Si festeggia a 10, 20, 30... una volta sola per traguardo: il traguardo si
+// segna appena la finestra compare, cosi' chi la chiude senza condividere non
+// se la ritrova a ogni apertura. Nel numero c'e' la streak di adesso, che di
+// solito e' proprio il traguardo.
+function maybeCelebrate() {
+  const s = store.get();
+  // Prima viene la domanda della prima apertura, e in mezzo alle serie una
+  // finestra che salta fuori farebbe solo sbagliare tocco: il traguardo
+  // aspetta la prossima volta che si entra nell'app.
+  if (!s.sexChosen || s.activeWorkout) return;
+  const modalRoot = document.getElementById('modal-root');
+  if (modalRoot && modalRoot.children.length) return;
+
+  const streak = computeStreak(s.workouts);
+  if (streak.conta < OGNI_TRAGUARDO) return;
+  const traguardo = Math.floor(streak.conta / OGNI_TRAGUARDO) * OGNI_TRAGUARDO;
+  const inizio = dayKey(streak.catena.primo);
+  const festeggiato = s.streakMilestone;
+  if (festeggiato && festeggiato.start === inizio && festeggiato.value >= traguardo) return;
+
+  store.setStreakMilestone({ start: inizio, value: traguardo });
+  openMilestoneModal(streak.conta);
+}
+
+// Chiamata da app.js all'avvio. Tornare nell'app dallo sfondo vale come
+// entrarci: sul telefono una PWA si riprende molto piu' spesso di quanto si
+// riapra da zero, ed e' anche il momento in cui puo' essere cambiato il giorno.
 function init() {
   renderChip();
   store.onChange(renderChip);
   window.addEventListener('hashchange', renderChip);
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) renderChip();
+    if (document.hidden) return;
+    renderChip();
+    maybeCelebrate();
   });
+  maybeCelebrate();
 }
 
 window.MyGym = window.MyGym || {};

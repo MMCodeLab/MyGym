@@ -106,7 +106,10 @@ function defaultState() {
   // il valore di partenza si confonde con una risposta e la domanda della prima
   // apertura non saprebbe quando farsi viva. I dati gia' salvati non hanno la
   // chiave, quindi la domanda arriva una volta anche a chi usa l'app da prima.
-  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90, sex: 'maschio', sexChosen: false, meals: [], goals: { kcal: null, protein: null } };
+  // streakMilestone e' l'ultimo traguardo della streak gia' festeggiato (vedi
+  // js/streak.js): sta nello stato, e quindi nel backup, perche' dopo un
+  // ripristino la festa dei 10 giorni non ricominci da capo.
+  return { theme: 'dark', exercises: [], days: [], workouts: [], measurements: [], activeWorkout: null, restTimerSeconds: 90, sex: 'maschio', sexChosen: false, meals: [], goals: { kcal: null, protein: null }, streakMilestone: null };
 }
 
 // Un obiettivo o e' un numero positivo o non c'e' affatto: lo zero e le cose
@@ -213,6 +216,15 @@ const store = {
     if ('kcal' in patch) goals.kcal = normalizeGoal(patch.kcal);
     if ('protein' in patch) goals.protein = normalizeGoal(patch.protein);
     state.goals = goals;
+    save();
+  },
+
+  // ---- Streak: l'ultimo traguardo festeggiato ----
+  // { start: 'AAAA-MM-GG', value: 10 }: il primo giorno della streak serve a
+  // riconoscerla, cosi' quando ne nasce un'altra il suo 10 si festeggia di
+  // nuovo.
+  setStreakMilestone(milestone) {
+    state.streakMilestone = milestone;
     save();
   },
 

@@ -94,8 +94,9 @@ function chiediSessoAllaPrimaApertura() {
 
 chiediSessoAllaPrimaApertura();
 
-// La fiammella della streak in alto (vedi js/streak.js): dopo la domanda
-// della prima apertura, che ha la precedenza su tutto il resto.
+// La fiammella della streak in alto e il traguardo ogni 10 giorni (vedi
+// js/streak.js): dopo la domanda della prima apertura, che ha la precedenza
+// su tutto il resto.
 window.MyGym.streak.init();
 
 // Una misura appena la schermata esiste e una quando iOS ha finito di animare

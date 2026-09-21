@@ -1,8 +1,9 @@
 // Script classico (non un modulo ES): espone tutto su window.MyGym.
 //
 // L'immagine quadrata-verticale del resoconto mensile, disegnata con un canvas
-// 1080x1920 e passata a navigator.share. Tutto avviene sul telefono: nessun
-// server, nessuna immagine caricata da nessuna parte.
+// 1080x1920 e passata a navigator.share, e quella quadrata della streak (in
+// fondo al file). Tutto avviene sul telefono: nessun server, nessuna immagine
+// caricata da nessuna parte.
 //
 // Il criterio del disegno e' quello di una storia su Instagram: pochi numeri
 // molto grandi, tanto spazio vuoto, e i colori delle medaglie come unico
@@ -94,9 +95,11 @@ function fitFont(ctx, testo, maxWidth, peso, dimensione, famiglia) {
   return ctx.font;
 }
 
-function background(ctx) {
+// Le misure servono all'immagine quadrata della streak: le macchie restano
+// agli stessi angoli, con l'altezza in proporzione.
+function background(ctx, larghezza = W, altezza = H) {
   ctx.fillStyle = '#0b0e1a';
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, larghezza, altezza);
 
   // Le stesse macchie sfocate che l'app ha dietro al vetro.
   const blob = (x, y, r, colore, alpha) => {
@@ -105,12 +108,33 @@ function background(ctx) {
     g.addColorStop(1, 'rgba(11,14,26,0)');
     ctx.globalAlpha = alpha;
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, larghezza, altezza);
     ctx.globalAlpha = 1;
   };
-  blob(120, 200, 720, '#7c3aed', 0.60);
-  blob(980, 1560, 780, '#06b6d4', 0.45);
-  blob(760, 820, 640, '#ec4899', 0.16);
+  const y = altezza / H;
+  blob(120, 200 * y, 720, '#7c3aed', 0.60);
+  blob(980, 1560 * y, 780, '#06b6d4', 0.45);
+  blob(760, 820 * y, 640, '#ec4899', 0.16);
+}
+
+// Logo e nome dell'app centrati, in cima a tutte le immagini da condividere.
+async function drawBrand(ctx, larghezza, top) {
+  const logo = await loadImage('icons/icon-192.png').catch(() => null);
+  const titoloLogo = 'MyGym';
+  ctx.font = '800 48px Sora, sans-serif';
+  const largLogoTesto = ctx.measureText(titoloLogo).width;
+  const lato = 78;
+  const totale = (logo ? lato + 22 : 0) + largLogoTesto;
+  let cursore = (larghezza - totale) / 2;
+  if (logo) {
+    ctx.save();
+    roundRectPath(ctx, cursore, top, lato, lato, 22);
+    ctx.clip();
+    ctx.drawImage(logo, cursore, top, lato, lato);
+    ctx.restore();
+    cursore += lato + 22;
+  }
+  drawText(ctx, titoloLogo, cursore, top + 58, '800 48px Sora, sans-serif', BIANCO, 'left');
 }
 
 // ---------- La figura del corpo ----------
@@ -146,22 +170,7 @@ async function drawCard(recap) {
   background(ctx);
 
   // --- intestazione: logo e nome ---
-  const logo = await loadImage('icons/icon-192.png').catch(() => null);
-  const titoloLogo = 'MyGym';
-  ctx.font = '800 48px Sora, sans-serif';
-  const largLogoTesto = ctx.measureText(titoloLogo).width;
-  const lato = 78;
-  const totale = (logo ? lato + 22 : 0) + largLogoTesto;
-  let cursore = (W - totale) / 2;
-  if (logo) {
-    ctx.save();
-    roundRectPath(ctx, cursore, 96, lato, lato, 22);
-    ctx.clip();
-    ctx.drawImage(logo, cursore, 96, lato, lato);
-    ctx.restore();
-    cursore += lato + 22;
-  }
-  drawText(ctx, titoloLogo, cursore, 154, '800 48px Sora, sans-serif', BIANCO, 'left');
+  await drawBrand(ctx, W, 96);
 
   // --- mese ---
   const mese = recap.titolo.charAt(0).toUpperCase() + recap.titolo.slice(1);
@@ -247,18 +256,15 @@ function toBlob(canvas) {
   });
 }
 
-// Ritorna 'share', 'download' o 'cancel', cosi' la vista sa se dire qualcosa.
-async function shareRecapCard(recap) {
-  await ensureFonts();
-  const canvas = await drawCard(recap);
-  const blob = await toBlob(canvas);
-
-  const nome = `mygym-${recap.titolo.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.png`;
+// L'immagine passa al foglio di condivisione del telefono; dove non si puo'
+// (sul computer, per dire) si scarica. Ritorna 'share', 'download' o
+// 'cancel', cosi' la vista sa se dire qualcosa.
+async function shareImage(blob, nome, titolo) {
   const file = new File([blob], nome, { type: 'image/png' });
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: `MyGym — ${recap.titolo}` });
+      await navigator.share({ files: [file], title: titolo });
       return 'share';
     } catch (err) {
       // Chi annulla il foglio di condivisione ha deciso: scaricargli comunque
@@ -278,7 +284,78 @@ async function shareRecapCard(recap) {
   return 'download';
 }
 
+async function shareRecapCard(recap) {
+  await ensureFonts();
+  const canvas = await drawCard(recap);
+  const blob = await toBlob(canvas);
+  const nome = `mygym-${recap.titolo.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.png`;
+  return shareImage(blob, nome, `MyGym — ${recap.titolo}`);
+}
+
+// ---------- La streak ----------
+// Quadrata e non verticale come il resoconto: e' una foto da mandare in chat
+// agli amici, non una storia. Dice una cosa sola, la fiamma accesa col numero
+// grande, sempre accesa: si condivide per festeggiare, anche se oggi la
+// streak sta dormendo.
+
+const LATO = 1080;
+
+async function drawStreakCard(giorni) {
+  const canvas = document.createElement('canvas');
+  canvas.width = LATO;
+  canvas.height = LATO;
+  const ctx = canvas.getContext('2d');
+
+  background(ctx, LATO, LATO);
+
+  // Un alone caldo dietro la fiamma, come quello della card in Progressi.
+  const alone = ctx.createRadialGradient(LATO / 2, 440, 0, LATO / 2, 440, 430);
+  alone.addColorStop(0, 'rgba(255, 110, 30, 0.42)');
+  alone.addColorStop(1, 'rgba(255, 110, 30, 0)');
+  ctx.fillStyle = alone;
+  ctx.fillRect(0, 0, LATO, LATO);
+
+  await drawBrand(ctx, LATO, 64);
+
+  // La fiamma e' lo stesso SVG dell'app, disegnato come immagine. Il bagliore
+  // lo fa l'ombra del canvas: il filtro CSS che lo da' nell'app, qui dentro,
+  // non esiste.
+  const svg = window.MyGym.streak.flameSvg('attiva', { size: 520 });
+  const fiamma = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+  ctx.save();
+  ctx.shadowColor = 'rgba(255, 90, 31, 0.75)';
+  ctx.shadowBlur = 70;
+  ctx.drawImage(fiamma, (LATO - 520) / 2, 170, 520, 520);
+  ctx.restore();
+
+  // Il numero coi colori della fiamma, dal giallo del cuore al rosso della punta.
+  const numero = String(giorni);
+  ctx.font = fitFont(ctx, numero, LATO - 200, 800, 250, 'Sora, sans-serif');
+  const fuoco = ctx.createLinearGradient(0, 700, 0, 890);
+  fuoco.addColorStop(0, '#fff3c4');
+  fuoco.addColorStop(0.5, '#ffb13b');
+  fuoco.addColorStop(1, '#ff5a1f');
+  ctx.save();
+  ctx.shadowColor = 'rgba(255, 90, 31, 0.55)';
+  ctx.shadowBlur = 40;
+  drawText(ctx, numero, LATO / 2, 890, ctx.font, fuoco);
+  ctx.restore();
+
+  drawText(ctx, giorni === 1 ? 'GIORNO DI STREAK' : 'GIORNI DI STREAK', LATO / 2, 958, '700 38px Inter, sans-serif', GRIGIO);
+  drawText(ctx, 'mmcodelab.github.io/MyGym/', LATO / 2, 1030, '700 32px Inter, sans-serif', '#06b6d4');
+
+  return canvas;
+}
+
+async function shareStreakCard({ giorni }) {
+  await ensureFonts();
+  const canvas = await drawStreakCard(giorni);
+  const blob = await toBlob(canvas);
+  const quanti = `${giorni} ${giorni === 1 ? 'giorno' : 'giorni'}`;
+  return shareImage(blob, `mygym-streak-${quanti.replace(' ', '-')}.png`, `MyGym — ${quanti} di streak`);
+}
+
 window.MyGym = window.MyGym || {};
-Object.assign(window.MyGym, { shareRecapCard });
+Object.assign(window.MyGym, { shareRecapCard, shareStreakCard });
 
 })();
