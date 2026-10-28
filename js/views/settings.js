@@ -198,6 +198,11 @@ function render(container) {
           <span class="chip ${s === restTimerSeconds ? 'selected' : ''}" data-rest-seconds="${s}" ${s === restTimerSeconds ? 'style="background:var(--accent-gradient);border-color:transparent"' : ''}>${formatRestPresetLabel(s)}</span>
         `).join('')}
       </div>
+      <div class="field" style="margin-top:10px">
+        <label for="rest-custom-seconds">Durata personalizzata (secondi)</label>
+        <input type="text" inputmode="numeric" class="input" id="rest-custom-seconds" value="${restTimerSeconds}" placeholder="es. 45" />
+      </div>
+      <p class="settings-section-hint">I preset sopra sono scorciatoie. Qui puoi impostare qualsiasi durata tra 5 e 600 secondi (es. 45, 75, 150).</p>
       <div class="settings-row glass" id="rest-notif-row" ${restNotifStatus() === 'default' ? 'style="cursor:pointer"' : ''}>
         <div class="settings-row-text">
           <div class="settings-row-title">Notifiche a fine recupero — ${REST_NOTIF_COPY[restNotifStatus()].title}</div>
@@ -297,6 +302,33 @@ function render(container) {
       store.setRestTimerSeconds(Number(chip.dataset.restSeconds));
       render(container);
     });
+  });
+
+  // Come per calorie/proteine: si salva al blur senza ridisegnare subito il
+  // focus, poi si normalizza il valore mostrato (5–600) a quello davvero salvato.
+  const restCustomInput = container.querySelector('#rest-custom-seconds');
+  restCustomInput.addEventListener('change', () => {
+    const raw = restCustomInput.value.trim().replace(',', '.');
+    if (!raw) {
+      restCustomInput.value = store.get().restTimerSeconds;
+      return;
+    }
+    store.setRestTimerSeconds(raw);
+    const saved = store.get().restTimerSeconds;
+    restCustomInput.value = saved;
+    // Aggiorna i chip evidenziati senza perdere il focus sul campo.
+    container.querySelectorAll('[data-rest-seconds]').forEach((chip) => {
+      const selected = Number(chip.dataset.restSeconds) === saved;
+      chip.classList.toggle('selected', selected);
+      if (selected) {
+        chip.style.background = 'var(--accent-gradient)';
+        chip.style.borderColor = 'transparent';
+      } else {
+        chip.style.background = '';
+        chip.style.borderColor = '';
+      }
+    });
+    showToast(`Recupero: ${formatRestPresetLabel(saved)}`);
   });
 
   container.querySelector('#rest-notif-row').addEventListener('click', async () => {
