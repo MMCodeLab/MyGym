@@ -92,12 +92,26 @@ function chiediSessoAllaPrimaApertura() {
   });
 }
 
-chiediSessoAllaPrimaApertura();
+async function avvio() {
+  const { cloud, authScreen } = window.MyGym;
+  if (cloud && window.supabase) {
+    try {
+      if (!(await cloud.getSession())) await authScreen.show();
+      const r = await cloud.sync();
+      if (r.status === 'downloaded') { location.reload(); return; }
+      cloud.start();
+    } catch (e) {
+      console.warn('Cloud non disponibile, uso i dati locali.', e);
+    }
+  }
+  chiediSessoAllaPrimaApertura();
+  window.MyGym.streak.init();
+}
+avvio();
 
 // La fiammella della streak in alto e il traguardo ogni 10 giorni (vedi
 // js/streak.js): dopo la domanda della prima apertura, che ha la precedenza
 // su tutto il resto.
-window.MyGym.streak.init();
 
 // Una misura appena la schermata esiste e una quando iOS ha finito di animare
 // l'apertura: se nel frattempo l'altezza non e' cambiata, la seconda non
