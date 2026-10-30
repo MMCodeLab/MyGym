@@ -1776,3 +1776,107 @@ a { color: inherit; text-decoration: none; }
 
 .auth-msg { margin: 0; min-height: 1.2em; color: var(--danger); font-size: 0.85rem; }
 .auth-msg-ok { color: var(--goal-near); }
+
+.auth-pass { position: relative; }
+.auth-pass .auth-input { padding-right: 48px; }
+.auth-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border: 0; background: none; font-size: 1.2rem; cursor: pointer; }
+
+/* ---------- Caselle solo informative nelle Impostazioni ---------- */
+.settings-row.settings-info {
+  background: transparent;
+  border: 1px dashed var(--glass-border);
+  box-shadow: none;
+  cursor: default;
+  align-items: flex-start;
+}
+.settings-row.settings-info::before {
+  content: 'i';
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-tertiary);
+  color: var(--text-tertiary);
+  font-family: var(--font-display);
+  font-size: 0.78rem; font-weight: 800; font-style: italic;
+}
+
+/* ---------- Notifiche a fine recupero: il colore dice lo stato ---------- */
+.notif-row .notif-status { font-weight: 800; }
+
+/* Attive: i colori dell'app (azzurro e viola) */
+.settings-row.notif-granted {
+  border-color: rgba(6, 182, 212, 0.55);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.16), rgba(6, 182, 212, 0.16));
+}
+.notif-granted .notif-status { color: #22d3ee; }
+:root[data-theme="light"] .notif-granted .notif-status { color: #0e7490; }
+
+/* Bloccate o non supportate: rosso */
+.settings-row.notif-denied,
+.settings-row.notif-unsupported {
+  border-color: rgba(244, 63, 94, 0.5);
+  background: rgba(244, 63, 94, 0.12);
+}
+.notif-denied .notif-status,
+.notif-unsupported .notif-status { color: var(--danger); }
+
+/* Da attivare: giallo, perché è l'unico stato su cui si può toccare */
+.settings-row.notif-default {
+  border-color: rgba(244, 183, 64, 0.55);
+  background: rgba(244, 183, 64, 0.12);
+}
+.notif-default .notif-status { color: var(--warning); }
+
+/* ---------- Barra in alto a due pagine (titolo / app) ---------- */
+.topbar-pager {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.topbar-pager::-webkit-scrollbar { display: none; }
+.topbar-page { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; }
+.topbar-apps { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-3); }
+
+.app-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 28px; padding: 4px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong);
+  color: var(--text-primary);
+  font: inherit; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer;
+  transition: transform .2s var(--ease-spring);
+}
+.app-chip:active { transform: scale(0.94); }
+.app-chip-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+.topbar-dots {
+  position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%);
+  display: flex; gap: 4px; pointer-events: none;
+}
+.topbar-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-tertiary); }
+.topbar-dots i.on { background: var(--text-primary); }
+
+/* ---------- Mini-player incorporato ---------- */
+.mini-player {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  top: calc(env(safe-area-inset-top, 0px) + 72px);
+  width: calc(100% - 24px); max-width: 536px;
+  z-index: 40;
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+}
+.mini-player[hidden] { display: none; }
+.mini-player-head { display: flex; align-items: center; gap: 6px; padding: 2px 4px 6px; }
+.mini-player-title { flex: 1; font-family: var(--font-display); font-size: 0.9rem; }
+.mini-player-body { overflow: hidden; }
+.mini-player.is-min .mini-player-body { height: 0; }
+.mini-player.is-min .mini-player-head { padding-bottom: 2px; }
+.mini-player-form { display: flex; flex-direction: column; gap: 8px; padding: 4px; }
+.mini-player-form p { margin: 0; font-size: 0.78rem; color: var(--text-secondary); }
+.mini-player-msg { color: var(--danger) !important; min-height: 1.1em; }

@@ -198,10 +198,8 @@ function render(container) {
           <span class="chip ${s === restTimerSeconds ? 'selected' : ''}" data-rest-seconds="${s}" ${s === restTimerSeconds ? 'style="background:var(--accent-gradient);border-color:transparent"' : ''}>${formatRestPresetLabel(s)}</span>
         `).join('')}
       </div>
-      <div class="settings-row glass" id="rest-notif-row" ${restNotifStatus() === 'default' ? 'style="cursor:pointer"' : ''}>
-        <div class="settings-row-text">
-          <div class="settings-row-title">Notifiche a fine recupero — ${REST_NOTIF_COPY[restNotifStatus()].title}</div>
-          <div class="settings-row-desc">${REST_NOTIF_COPY[restNotifStatus()].desc}</div>
+      <div class="settings-row glass notif-row notif-${restNotifStatus()}" id="rest-notif-row" ${restNotifStatus() === 'default' ? 'style="cursor:pointer"' : ''}>        <div class="settings-row-text">
+          <div class="settings-row-title">Notifiche a fine recupero — <span class="notif-status">${REST_NOTIF_COPY[restNotifStatus()].title}</span></div>          <div class="settings-row-desc">${REST_NOTIF_COPY[restNotifStatus()].desc}</div>
         </div>
       </div>
     </div>
@@ -226,13 +224,13 @@ function render(container) {
 
     <div class="settings-section">
       <h3>Informazioni</h3>
-      <div class="settings-row glass">
+      <div class="settings-row settings-info">
         <div class="settings-row-text">
           <div class="settings-row-title">Immagini esercizi</div>
           <div class="settings-row-desc">Le foto suggerite provengono dal dataset open-source "free-exercise-db", nessuna registrazione richiesta.</div>
         </div>
       </div>
-      <div class="settings-row glass">
+      <div class="settings-row settings-info">
         <div class="settings-row-text">
           <div class="settings-row-title">MyGym</div>
           <div class="settings-row-desc">Versione 0.1.0 — i tuoi dati restano su questo dispositivo. Fanno eccezione le richieste al Virtual PT e le foto della sezione Cibo, che vengono inviate all'AI per essere elaborate e non vengono conservate.</div>
@@ -249,7 +247,27 @@ function render(container) {
         </div>
       </div>
     </div>
-
+    <div class="settings-section">
+      <h3>Account</h3>
+      <div class="settings-row glass">
+        <div class="settings-row-text">
+          <div class="settings-row-title" id="account-title">Account</div>
+          <div class="settings-row-desc" id="account-desc">Controllo in corso…</div>
+        </div>
+      </div>
+      <div class="settings-row glass" id="sync-row" style="cursor:pointer;display:none">
+        <div class="settings-row-text">
+          <div class="settings-row-title">Sincronizza ora</div>
+          <div class="settings-row-desc">Aggiorna i dati con quelli degli altri tuoi dispositivi.</div>
+        </div>
+      </div>
+      <div class="settings-row glass" id="logout-row" style="cursor:pointer;display:none">
+        <div class="settings-row-text">
+          <div class="settings-row-title" style="color:var(--danger)">Esci dall'account</div>
+          <div class="settings-row-desc">I dati restano su questo dispositivo. Per rientrare servono mail e password.</div>
+        </div>
+      </div>
+    </div>
     <p class="text-center text-secondary" style="font-size:0.75rem;margin-top:8px">© ${new Date().getFullYear()} Matteo Minniti. Tutti i diritti riservati.</p>
   `;
 
@@ -332,6 +350,46 @@ function render(container) {
     reader.readAsText(file);
     fileInput.value = '';
   });
+    // ---- Account (cloud) ----
+  const cloud = window.MyGym.cloud;
+  const accountTitle = container.querySelector('#account-title');
+  const accountDesc = container.querySelector('#account-desc');
+  const syncRow = container.querySelector('#sync-row');
+  const logoutRow = container.querySelector('#logout-row');
+
+  if (!cloud) {
+    accountDesc.textContent = 'Account non disponibile su questo dispositivo.';
+  } else {
+    cloud.getSession().then((session) => {
+      if (!session) {
+        accountTitle.textContent = 'Non hai effettuato l\'accesso';
+        accountDesc.textContent = 'Riapri l\'app per accedere.';
+        return;
+      }
+      const user = session.user;
+      accountTitle.textContent = (user.user_metadata || {}).nickname || 'Account';
+      accountDesc.textContent = `${user.email} — dati sincronizzati tra i tuoi dispositivi.`;
+      syncRow.style.display = '';
+      logoutRow.style.display = '';
+    }).catch(() => {
+      accountDesc.textContent = 'Impossibile leggere l\'account.';
+    });
+
+    syncRow.addEventListener('click', async () => {
+      showToast('Sincronizzazione…');
+      const r = await cloud.sync();
+      if (r.status === 'downloaded') { location.reload(); return; }
+      showToast(r.status === 'error' || r.status === 'offline' ? 'Sincronizzazione non riuscita' : 'Dati sincronizzati');
+    });
+
+    logoutRow.addEventListener('click', async () => {
+      const ok = window.confirm('Vuoi uscire dall\'account?\n\nI dati restano su questo dispositivo. Per rientrare servono mail e password.');
+      if (!ok) return;
+      try { await cloud.push(); } catch (e) { /* offline: si esce lo stesso */ }
+      await cloud.signOut();
+      location.reload();
+    });
+  }
 
 }
 

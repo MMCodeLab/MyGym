@@ -31,11 +31,17 @@
   </div>
 
   <div id="app-shell">
-    <header class="topbar glass">
-      <div class="topbar-inner">
-        <span class="brand"><img src="icons/icon-192.png" alt="" class="brand-mark" width="28" height="28" /><strong>MyGym</strong></span>
-        <a href="#/progressi" class="streak-chip" id="streak-chip" hidden></a>
+        <header class="topbar glass">
+      <div class="topbar-pager" id="topbar-pager">
+        <div class="topbar-inner topbar-page">
+          <span class="brand"><img src="icons/icon-192.png" alt="" class="brand-mark" width="28" height="28" /><strong>MyGym</strong></span>
+          <a href="#/progressi" class="streak-chip" id="streak-chip" hidden></a>
+        </div>
+        <div class="topbar-page topbar-apps">
+          <button type="button" class="app-chip" data-app="spotify"><span class="app-chip-dot" style="background:#1db954"></span>Spotify</button>
+        </div>
       </div>
+      <span class="topbar-dots" id="topbar-dots" aria-hidden="true"><i class="on"></i><i></i></span>
     </header>
 
     <main id="view" class="view" role="main"></main>
@@ -101,6 +107,7 @@
   <script src="js/views/personal-trainer.js"></script>
   <script src="js/views/settings.js"></script>
   <script src="js/pwa-shell.js" data-app="mygym" data-sw="sw.js"></script>
+  <script src="js/mini-player.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

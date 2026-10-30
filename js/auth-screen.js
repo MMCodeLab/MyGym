@@ -45,7 +45,11 @@ function show() {
         </div>
         <input class="auth-input" name="nickname" placeholder="Nickname" autocomplete="nickname" data-solo-signup hidden />
         <input class="auth-input" name="email" type="email" placeholder="Mail" autocomplete="email" />
-        <input class="auth-input" name="password" type="password" placeholder="Password" autocomplete="current-password" />
+        <div class="auth-pass">
+  <input class="auth-input" name="password" type="password" placeholder="Password" autocomplete="current-password" />
+  <button type="button" class="auth-eye" data-auth="occhio" aria-label="Mostra password">👁</button>
+</div>
+<input class="auth-input" name="password2" type="password" placeholder="Conferma password" autocomplete="new-password" data-solo-signup hidden />
         <input class="auth-input" name="code" placeholder="Codice d'invito" autocomplete="off" data-solo-signup hidden />
         <p class="auth-msg" role="alert"></p>
         <button type="button" class="btn btn-primary w-full" data-auth="invia">Accedi</button>
@@ -79,7 +83,9 @@ function show() {
       const nickname = field('nickname').value.trim();
       const code = field('code').value.trim();
       if (mode === 'signup' && (!nickname || !code)) return setMsg('Inserisci nickname e codice d\'invito.');
-
+      if (mode === 'signup' && password !== field('password2').value) {
+  return setMsg('Le due password non coincidono.');
+}
       sendBtn.disabled = true;
       sendBtn.textContent = 'Attendi…';
       try {
@@ -111,6 +117,11 @@ function show() {
       else if (a === 'tab-login') setMode('login');
       else if (a === 'tab-signup') setMode('signup');
       else if (a === 'invia') invia();
+      else if (a === 'occhio') {
+  const mostra = field('password').type === 'password';
+  field('password').type = mostra ? 'text' : 'password';
+  field('password2').type = mostra ? 'text' : 'password';
+}
     });
 
     setMode('login');

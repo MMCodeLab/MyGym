@@ -1,7 +1,7 @@
 // Alza questo numero a ogni pubblicazione: e' il cambiamento di questo file
 // che fa accorgere il browser che c'e' una versione nuova, e quindi fa
 // comparire l'avviso "Nuova versione disponibile" (vedi js/pwa-shell.js).
-const CACHE_VERSION = 'mygym-v15';
+const CACHE_VERSION = 'mygym-v16';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -37,6 +37,7 @@ const SHELL_ASSETS = [
   'icons/icon-maskable-512.png',
   'icons/apple-touch-icon.png',
   'icons/favicon.png',
+  'js/mini-player.js',
 ];
 
 // Niente skipWaiting() qui: la versione nuova resta "in attesa" finche' non e'
