@@ -3,6 +3,16 @@
 
 const { store, muscleGroup, icon, escapeHtml, openModal, showToast, confirmAction, navigate } = window.MyGym;
 
+function setText(e, s) {
+  if (e.kind === 'cardio') return `${formatNumber(s.minutes)} min · ${formatNumber(s.speed)} km/h`;
+  if (e.kind === 'corpo') {
+    if (e.bodyMode === 'zavorra') return `${formatNumber(s.reps)} reps · +${formatNumber(s.added)} kg`;
+    if (e.bodyMode === 'assist') return `${formatNumber(s.reps)} reps · elastico −${formatNumber(s.assist)} kg`;
+    return `${formatNumber(s.reps)} reps`;
+  }
+  return `${formatNumber(s.reps)} reps × ${formatNumber(s.weight)} kg`;
+}
+
 function formatDuration(totalSeconds) {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.round((totalSeconds % 3600) / 60);
@@ -230,7 +240,7 @@ function openWorkoutDetailModal(w) {
     <div class="card glass workout-exercise-card">
       <div class="exercise-name">${escapeHtml(e.name)}</div>
       <div class="sets-list mt-2">
-        ${e.sets.map((s, i) => `<div class="set-row set-row-readonly"><span class="set-label">Serie ${i + 1}</span><span class="text-secondary">${e.kind === 'cardio' ? `${formatNumber(s.minutes)} min · ${formatNumber(s.speed)} km/h` : `${formatNumber(s.reps)} reps × ${formatNumber(s.weight)} kg`}</span></div>`).join('')}
+        ${e.sets.map((s, i) => `<div class="set-row set-row-readonly"><span class="set-label">Serie ${i + 1}</span><span class="text-secondary">${setText(e, s)}</span></div>`).join('')}
       </div>
     </div>
   `).join('');

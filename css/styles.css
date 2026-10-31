@@ -1884,3 +1884,9 @@ a { color: inherit; text-decoration: none; }
 .topbar-apps { justify-content: center; }
 .app-chip-logo { flex-shrink: 0; display: block; }
 .mini-player-open[hidden] { display: none; }
+
+.kind-toggle-btn.is-corpo {
+  color: var(--accent-a);
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.12);
+}

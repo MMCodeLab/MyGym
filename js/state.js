@@ -71,8 +71,8 @@ function recordKey(exerciseId, name) {
 
 // Un esercizio e' "forza" (ripetizioni x carico) oppure "cardio" (tempo e
 // velocita' media): sul tapis roulant chiedere i chili non ha senso.
-const EXERCISE_KINDS = ['forza', 'cardio'];
-
+const EXERCISE_KINDS = ['forza', 'cardio', 'corpo'];
+const BODY_MODES = ['puro', 'zavorra', 'assist'];
 // Parole che indicano quasi sempre un attrezzo cardio. Servono a indovinare il
 // tipo di un esercizio scritto a mano durante l'allenamento e a migrare la
 // libreria di chi ha gia' i suoi esercizi salvati, senza chiedergli di
@@ -84,10 +84,22 @@ const CARDIO_NAME_HINTS = [
   'remoergometro', 'stepper', 'scala mobile', 'stairmaster', 'nuoto', 'cardio',
 ];
 
+// Esercizi che si fanno col peso del proprio corpo, e come: puro, con zavorra
+// o assistiti da elastico/macchina. Null se non sembra un esercizio a corpo libero.
+function guessBodyMode(name) {
+  const n = (name || '').toLowerCase();
+  const isBody = /muscle[ -]?up|trazion|pull[ -]?up|chin[ -]?up|\bdips?\b|flession|push[ -]?up|piegament|burpee|australian|handstand/.test(n);
+  if (!isBody) return null;
+  if (/zavorr|weighted/.test(n)) return 'zavorra';
+  if (/assist|elastic/.test(n)) return 'assist';
+  return 'puro';
+}
+
 function guessExerciseKind({ name, muscleGroups }) {
   if ((muscleGroups || []).includes('cardio')) return 'cardio';
   const n = (name || '').toLowerCase();
-  return CARDIO_NAME_HINTS.some((hint) => n.includes(hint)) ? 'cardio' : 'forza';
+  if (CARDIO_NAME_HINTS.some((hint) => n.includes(hint))) return 'cardio';
+  return guessBodyMode(name) ? 'corpo' : 'forza';
 }
 
 function resolveExerciseKind(kind, source) {
@@ -97,8 +109,23 @@ function resolveExerciseKind(kind, source) {
 // Una serie nasce con i campi del suo tipo. Passando da un tipo all'altro i
 // valori gia' scritti non si toccano: restano nell'oggetto e si ritrovano se
 // si torna indietro.
-function emptySet(kind) {
-  return kind === 'cardio' ? { minutes: null, speed: null } : { reps: null, weight: null };
+function emptySet(kind, mode) {
+  if (kind === 'cardio') return { minutes: null, speed: null };
+  if (kind === 'corpo') {
+    if (mode === 'zavorra') return { reps: null, added: null };
+    if (mode === 'assist') return { reps: null, assist: null };
+    return { reps: null };
+  }
+  return { reps: null, weight: null };
+}
+
+// Una serie a corpo libero si salva con il carico reale (peso corporeo + zavorra
+// - assistenza) in "weight": cosi' record e medaglie la leggono come le altre.
+function bodySet(s, mode, bodyWeight) {
+  const added = mode === 'zavorra' ? (s.added || 0) : 0;
+  const assist = mode === 'assist' ? (s.assist || 0) : 0;
+  const bw = bodyWeight || 0;
+  return { reps: s.reps || 0, weight: Math.max(0, bw + added - assist), bw, added, assist };
 }
 
 function defaultState() {
@@ -134,6 +161,11 @@ function migrateExercise(ex) {
   }
   if (!EXERCISE_KINDS.includes(migrated.kind)) {
     migrated = { ...migrated, kind: guessExerciseKind(migrated) };
+  }
+    // Una sola volta: "Dip", "Trazioni" ecc. gia' salvati come forza diventano corpo libero.
+  if (!migrated.bodyChecked) {
+    migrated = { ...migrated, bodyChecked: true };
+    if (migrated.kind === 'forza' && guessBodyMode(migrated.name)) migrated.kind = 'corpo';
   }
   return migrated;
 }
@@ -394,14 +426,21 @@ const store = {
   },
   addActiveWorkoutExercise({ exerciseId, name, muscles, kind }) {
     if (!state.activeWorkout) return null;
-    const resolvedKind = resolveExerciseKind(kind, { name, muscleGroups: muscles });
+        const resolvedKind = resolveExerciseKind(kind, { name, muscleGroups: muscles });
+    const lib = store.findExercise(exerciseId, name);
+    const mode = resolvedKind === 'corpo'
+      ? (BODY_MODES.includes(bodyMode) ? bodyMode : (lib && lib.bodyMode) || guessBodyMode(name) || 'puro')
+      : null;
+    const peso = store.latestMeasurementValue('peso');
     const entry = {
       id: uid(),
       exerciseId: exerciseId || null,
       name: name.trim(),
       muscles: muscles || [],
       kind: resolvedKind,
-      sets: [emptySet(resolvedKind)],
+      bodyMode: mode,
+      bodyWeight: peso ? peso.value : null,
+      sets: [emptySet(resolvedKind, mode)],
     };
     state.activeWorkout.exercises.push(entry);
     save();
@@ -423,8 +462,7 @@ const store = {
     if (!state.activeWorkout) return;
     const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
     if (!entry) return;
-    entry.sets.push(emptySet(entry.kind));
-    save();
+    entry.sets.push(emptySet(entry.kind, entry.bodyMode));    save();
   },
   // Cambia il tipo di un esercizio mentre lo si sta compilando (es. si e'
   // aggiunto "Tapis roulant" a mano e chiede ripetizioni). I valori dell'altro
@@ -433,10 +471,28 @@ const store = {
     if (!state.activeWorkout || !EXERCISE_KINDS.includes(kind)) return;
     const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
     if (!entry || entry.kind === kind) return;
-    entry.kind = kind;
-    entry.sets = entry.sets.map((set) => ({ ...emptySet(kind), ...set }));
+        entry.kind = kind;
+    if (kind === 'corpo') {
+      if (!entry.bodyMode) entry.bodyMode = guessBodyMode(entry.name) || 'puro';
+      if (entry.bodyWeight == null) {
+        const peso = store.latestMeasurementValue('peso');
+        entry.bodyWeight = peso ? peso.value : null;
+      }
+    }
+    entry.sets = entry.sets.map((set) => ({ ...emptySet(kind, entry.bodyMode), ...set }));
     save();
   },
+  // Passa un esercizio a corpo libero tra puro, zavorra e assistito.
+  setActiveWorkoutExerciseBodyMode(entryId, mode) {
+    if (!state.activeWorkout || !BODY_MODES.includes(mode)) return;
+    const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
+    if (!entry || entry.kind !== 'corpo' || entry.bodyMode === mode) return;
+    entry.bodyMode = mode;
+    entry.sets = entry.sets.map((set) => ({ ...emptySet('corpo', mode), ...set }));
+    if (entry.exerciseId) store.updateExercise(entry.exerciseId, { bodyMode: mode }); // ricorda la scelta
+    save();
+  },
+
   removeActiveWorkoutSet(entryId, setIndex) {
     if (!state.activeWorkout) return;
     const entry = state.activeWorkout.exercises.find((e) => e.id === entryId);
@@ -609,15 +665,18 @@ const store = {
       date: new Date().toISOString(),
       durationSeconds: Math.round(elapsedMs / 1000),
       exercises: w.exercises.map((e) => {
-        const kind = e.kind === 'cardio' ? 'cardio' : 'forza';
+                const kind = e.kind === 'cardio' ? 'cardio' : e.kind === 'corpo' ? 'corpo' : 'forza';
         return {
           exerciseId: e.exerciseId,
           name: e.name,
           muscles: e.muscles,
           kind,
-          sets: e.sets.map((s) => (kind === 'cardio'
-            ? { minutes: s.minutes || 0, speed: s.speed || 0 }
-            : { reps: s.reps || 0, weight: s.weight || 0 })),
+          ...(kind === 'corpo' ? { bodyMode: e.bodyMode || 'puro' } : {}),
+          sets: e.sets.map((s) => {
+            if (kind === 'cardio') return { minutes: s.minutes || 0, speed: s.speed || 0 };
+            if (kind === 'corpo') return bodySet(s, e.bodyMode, e.bodyWeight);
+            return { reps: s.reps || 0, weight: s.weight || 0 };
+          }),
         };
       }),
       muscles,
@@ -740,6 +799,6 @@ const store = {
 };
 
 window.MyGym = window.MyGym || {};
-Object.assign(window.MyGym, { store, MUSCLE_GROUPS, muscleGroup, BODY_METRICS, bodyMetric, uid, applyTheme, MAX_MUSCLE_GROUPS_PER_EXERCISE, EXERCISE_KINDS, guessExerciseKind });
+Object.assign(window.MyGym, { store, MUSCLE_GROUPS, muscleGroup, BODY_METRICS, bodyMetric, uid, BODY_MODES, guessBodyMode, applyTheme, MAX_MUSCLE_GROUPS_PER_EXERCISE, EXERCISE_KINDS, guessExerciseKind });
 
 })();

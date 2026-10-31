@@ -22,6 +22,73 @@ function currentElapsedMs(w) {
   return w.elapsedMs + (w.running ? Date.now() - w.startedAt : 0);
 }
 
+// ---------- Esercizi a corpo libero ----------
+const KIND_CYCLE = ['forza', 'corpo', 'cardio'];
+const KIND_TEXT = { forza: 'ripetizioni e carico', corpo: 'ripetizioni e peso del corpo', cardio: 'tempo e velocità' };
+
+// Carico reale di una serie a corpo libero: peso corporeo + zavorra - elastico.
+function liveWeight(entry, set) {
+  if (entry.kind !== 'corpo') return set.weight;
+  const bw = entry.bodyWeight || 0;
+  if (!bw) return null;
+  const added = entry.bodyMode === 'zavorra' ? (set.added || 0) : 0;
+  const assist = entry.bodyMode === 'assist' ? (set.assist || 0) : 0;
+  return Math.max(0, bw + added - assist);
+}
+
+// I campi che una serie compila, per tipo: serve al doppio tocco.
+function fieldsOf(entry) {
+  if (entry.kind === 'cardio') return ['minutes', 'speed'];
+  if (entry.kind === 'corpo') {
+    if (entry.bodyMode === 'zavorra') return ['reps', 'added'];
+    if (entry.bodyMode === 'assist') return ['reps', 'assist'];
+    return ['reps'];
+  }
+  return ['reps', 'weight'];
+}
+
+function askBodyWeight(current, onDone) {
+  openModal({
+    title: 'Il tuo peso',
+    bodyHtml: `
+      <p class="text-secondary" style="margin-top:0">Serve per gli esercizi a corpo libero (dip, trazioni, muscle up…). Si salva nelle Misure.</p>
+      <div class="field">
+        <label for="bw-input">Peso corporeo (kg)</label>
+        <input type="text" inputmode="decimal" class="input" id="bw-input" value="${current || ''}" placeholder="es. 78,5" />
+      </div>
+      <p id="bw-error" class="form-error" style="display:none">Scrivi un peso valido.</p>
+      <button class="btn btn-primary btn-block" id="bw-save">Salva</button>
+    `,
+    onMount: (body) => {
+      const input = body.querySelector('#bw-input');
+      input.focus();
+      const save = () => {
+        const n = parseFloat(input.value.trim().replace(',', '.'));
+        if (!Number.isFinite(n) || n < 20 || n > 300) {
+          body.querySelector('#bw-error').style.display = 'block';
+          return;
+        }
+        store.addMeasurement({ peso: n });
+        closeModal();
+        onDone(n);
+      };
+      body.querySelector('#bw-save').addEventListener('click', save);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+    },
+  });
+}
+
+function bodyModeHtml(entry) {
+  if (entry.kind !== 'corpo') return '';
+  const modes = [['puro', 'Corpo libero'], ['zavorra', '+ Zavorra'], ['assist', '− Elastico']];
+  return `
+    <div class="chip-row mt-2">
+      ${modes.map(([k, l]) => `<span class="chip ${entry.bodyMode === k ? 'selected' : ''}" data-body-mode="${entry.id}" data-mode="${k}"
+        ${entry.bodyMode === k ? 'style="background:var(--accent-gradient);border-color:transparent"' : ''}>${l}</span>`).join('')}
+      <span class="chip" data-edit-bw="${entry.id}">Peso ${entry.bodyWeight ? formatNumber(entry.bodyWeight) + ' kg' : '?'}</span>
+    </div>`;
+}
+
 // Marca (o smarca) visivamente una serie come record personale, confrontandola
 // con il meglio storico. Non mostra il toast: serve sia per il check silenzioso
 // al render sia come base per la celebrazione al cambio valore. Ritorna true/false.
@@ -29,8 +96,9 @@ function evaluateSetRecord(entry, setIndex, row) {
   if (entry.kind === 'cardio') return false; // tempo e velocita' non fanno massimali
   const set = entry.sets[setIndex];
   const label = row.querySelector('.set-label');
-  const isPr = !!(set && set.weight && set.reps &&
-    store.checkPersonalRecord({ exerciseId: entry.exerciseId, name: entry.name, weight: set.weight, reps: set.reps })?.isRecord);
+  const w = set ? liveWeight(entry, set) : null;
+  const isPr = !!(w && set.reps &&
+    store.checkPersonalRecord({ exerciseId: entry.exerciseId, name: entry.name, weight: w, reps: set.reps })?.isRecord);
   row.classList.toggle('is-pr', isPr);
   if (label) label.innerHTML = (isPr ? icon('sparkles') : '') + `Serie ${setIndex + 1}`;
   return isPr;
@@ -495,7 +563,7 @@ function suggestFromLast(last) {
 }
 
 function loadSuggestionHtml(entry) {
-  if (entry.kind === 'cardio') return '';
+  if (entry.kind === 'cardio' || entry.kind === 'corpo') return '';
   const last = store.lastPerformance(entry.exerciseId, entry.name);
   const next = suggestFromLast(last);
   if (!next) return ''; // prima volta con questo esercizio: non c'e' niente da confrontare
@@ -529,6 +597,18 @@ function setFieldsHtml(entry, set, index) {
       <span class="set-unit">km/h</span>
     `;
   }
+  if (entry.kind === 'corpo') {
+    const reps = `<input type="text" inputmode="decimal" class="input input-set" placeholder="reps" value="${set.reps ?? ''}" ${attrs('reps')} />`;
+    if (entry.bodyMode === 'zavorra') {
+      return `${reps}<span class="set-x">+</span>
+        <input type="text" inputmode="decimal" class="input input-set" placeholder="zavorra" value="${set.added ?? ''}" ${attrs('added')} /><span class="set-unit">kg</span>`;
+    }
+    if (entry.bodyMode === 'assist') {
+      return `${reps}<span class="set-x">−</span>
+        <input type="text" inputmode="decimal" class="input input-set" placeholder="elastico" value="${set.assist ?? ''}" ${attrs('assist')} /><span class="set-unit">kg</span>`;
+    }
+    return `${reps}<span class="set-unit">reps</span>`;
+  }
   return `
     <input type="text" inputmode="decimal" class="input input-set" placeholder="reps" value="${set.reps ?? ''}" ${attrs('reps')} />
     <span class="set-x">×</span>
@@ -551,19 +631,21 @@ function setRowHtml(entry, set, index, total) {
 
 function exerciseEntryHtml(entry, extra) {
   const isCardio = entry.kind === 'cardio';
+  const nextKind = KIND_CYCLE[(KIND_CYCLE.indexOf(entry.kind) + 1) % 3];
   return `
     <div class="card glass workout-exercise-card" data-entry-id="${entry.id}">
       <div class="flex items-center justify-between gap-2">
         <input type="text" class="input workout-exercise-name" value="${escapeHtml(entry.name)}" data-rename="${entry.id}" maxlength="60" />
-        <button class="icon-btn kind-toggle-btn${isCardio ? ' is-cardio' : ''}" data-toggle-kind="${entry.id}"
-          aria-label="${isCardio ? 'Passa a ripetizioni e carico' : 'Passa a tempo e velocità'}"
-          title="${isCardio ? 'Ora chiede tempo e velocità: tocca per tornare a ripetizioni e carico' : 'Ora chiede ripetizioni e carico: tocca per passare a tempo e velocità'}">${icon(isCardio ? 'stopwatch' : 'esercizi')}</button>
+        <button class="icon-btn kind-toggle-btn${isCardio ? ' is-cardio' : ''}${entry.kind === 'corpo' ? ' is-corpo' : ''}" data-toggle-kind="${entry.id}"
+          aria-label="Passa a ${KIND_TEXT[nextKind]}"
+          title="Ora chiede ${KIND_TEXT[entry.kind]}: tocca per passare a ${KIND_TEXT[nextKind]}">${icon(isCardio ? 'stopwatch' : 'esercizi')}</button>
         <button class="icon-btn danger" data-remove-exercise="${entry.id}" aria-label="Rimuovi esercizio">${icon('trash')}</button>
       </div>
       ${extra ? '<span class="badge badge-extra workout-extra-badge">Extra · fuori dalla scheda</span>' : ''}
       <div class="chip-row mt-2" data-muscle-picker="${entry.id}">
         ${muscleMultiChipsHtml(entry.id, entry.muscles)}
       </div>
+      ${bodyModeHtml(entry)}
       ${loadSuggestionHtml(entry)}
       <div class="sets-list mt-3">
         ${entry.sets.map((s, i) => setRowHtml(entry, s, i, entry.sets.length)).join('')}
@@ -691,15 +773,23 @@ function openAddExerciseModal(initialQuery) {
 
       function addExercise({ exerciseId, name }) {
         const ex = exerciseId ? store.getExercise(exerciseId) : null;
-        store.addActiveWorkoutExercise({
+        const entry = store.addActiveWorkoutExercise({
           exerciseId: exerciseId || null,
           name,
           muscles: ex ? [...(ex.muscleGroups || [])] : [],
           // Per un esercizio libero il tipo lo indovina lo store dal nome.
           kind: ex ? ex.kind : undefined,
+          bodyMode: ex ? ex.bodyMode : undefined,
         });
         closeModal();
         renderCurrent();
+        // A corpo libero serve il peso: se non e' nelle Misure lo si chiede una volta.
+        if (entry && entry.kind === 'corpo' && entry.bodyWeight == null) {
+          setTimeout(() => askBodyWeight(null, (n) => {
+            store.updateActiveWorkoutExercise(entry.id, { bodyWeight: n });
+            renderCurrent();
+          }), 300);
+        }
       }
 
       // Su un esercizio gia' segnato si chiede conferma invece di aggiungerlo
@@ -860,9 +950,63 @@ function renderActive(container) {
       const entryId = btn.dataset.toggleKind;
       const entry = store.getActiveWorkout().exercises.find((e) => e.id === entryId);
       if (!entry) return;
-      const next = entry.kind === 'cardio' ? 'forza' : 'cardio';
+      const next = KIND_CYCLE[(KIND_CYCLE.indexOf(entry.kind) + 1) % 3];
       store.setActiveWorkoutExerciseKind(entryId, next);
-      showToast(next === 'cardio' ? 'Ora chiede tempo e velocità' : 'Ora chiede ripetizioni e carico');
+      showToast(`Ora chiede ${KIND_TEXT[next]}`);
+      renderActive(container);
+      const updated = store.getActiveWorkout().exercises.find((e) => e.id === entryId);
+      if (updated && updated.kind === 'corpo' && updated.bodyWeight == null) {
+        askBodyWeight(null, (n) => {
+          store.updateActiveWorkoutExercise(entryId, { bodyWeight: n });
+          renderActive(container);
+        });
+      }
+    });
+  });
+
+  container.querySelectorAll('[data-body-mode]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      store.setActiveWorkoutExerciseBodyMode(chip.dataset.bodyMode, chip.dataset.mode);
+      renderActive(container);
+    });
+  });
+
+  container.querySelectorAll('[data-edit-bw]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const entry = store.getActiveWorkout().exercises.find((e) => e.id === chip.dataset.editBw);
+      askBodyWeight(entry && entry.bodyWeight, (n) => {
+        store.getActiveWorkout().exercises
+          .filter((e) => e.kind === 'corpo')
+          .forEach((e) => store.updateActiveWorkoutExercise(e.id, { bodyWeight: n }));
+        renderActive(container);
+      });
+    });
+  });
+
+  // Doppio tocco su un campo: copia la serie sopra (la prima, l'ultima volta).
+  // Si misurano i due tocchi a mano: su iPhone "dblclick" non e' affidabile.
+  let lastTap = { el: null, t: 0 };
+  container.querySelectorAll('[data-set-field]').forEach((input) => {
+    input.addEventListener('pointerup', () => {
+      const now = Date.now();
+      const isDouble = lastTap.el === input && now - lastTap.t < 350;
+      lastTap = isDouble ? { el: null, t: 0 } : { el: input, t: now };
+      if (!isDouble) return;
+
+      const entryId = input.dataset.entry;
+      const i = Number(input.dataset.index);
+      const entry = store.getActiveWorkout().exercises.find((e) => e.id === entryId);
+      if (!entry) return;
+      const patch = {};
+      if (i > 0) {
+        const prev = entry.sets[i - 1];
+        fieldsOf(entry).forEach((k) => { if (prev[k] != null) patch[k] = prev[k]; });
+      } else if (entry.kind === 'forza') {
+        const last = store.lastPerformance(entry.exerciseId, entry.name);
+        if (last) { patch.reps = last.reps; patch.weight = last.weight; }
+      }
+      if (!Object.keys(patch).length) return;
+      store.updateActiveWorkoutSet(entryId, i, patch);
       renderActive(container);
     });
   });
@@ -951,7 +1095,7 @@ function renderActive(container) {
       const isPr = evaluateSetRecord(entry, setIndex, row);
       if (isPr && !wasPr) {
         const set = entry.sets[setIndex];
-        showToast(`🏆 Nuovo record! ${entry.name} — ${set.reps} reps × ${set.weight} kg`, { variant: 'record' });
+        showToast(`🏆 Nuovo record! ${entry.name} — ${set.reps} reps × ${liveWeight(entry, set)} kg`, { variant: 'record' });
       }
     });
   });
@@ -1101,9 +1245,13 @@ function formatNumber(value) {
 }
 
 function formatSetSummary(exercise, set) {
-  return exercise.kind === 'cardio'
-    ? `${formatNumber(set.minutes)} min · ${formatNumber(set.speed)} km/h`
-    : `${formatNumber(set.reps)} reps × ${formatNumber(set.weight)} kg`;
+  if (exercise.kind === 'cardio') return `${formatNumber(set.minutes)} min · ${formatNumber(set.speed)} km/h`;
+  if (exercise.kind === 'corpo') {
+    if (exercise.bodyMode === 'zavorra') return `${formatNumber(set.reps)} reps · +${formatNumber(set.added)} kg`;
+    if (exercise.bodyMode === 'assist') return `${formatNumber(set.reps)} reps · elastico −${formatNumber(set.assist)} kg`;
+    return `${formatNumber(set.reps)} reps`;
+  }
+  return `${formatNumber(set.reps)} reps × ${formatNumber(set.weight)} kg`;
 }
 
 function renderSummary(container, record) {

@@ -75,6 +75,7 @@ const KIND_CHIPS = [
   // icona 'esercizi' e non 'dumbbell': quest'ultima, in piccolo, sembra un
   // segnale di divieto invece che un manubrio.
   { key: 'forza', icon: 'esercizi', label: 'Ripetizioni e carico' },
+  { key: 'corpo', icon: 'esercizi', label: 'Corpo libero' },
   { key: 'cardio', icon: 'stopwatch', label: 'Tempo e velocità' },
 ];
 
