@@ -49,9 +49,13 @@ function showPlayer(appKey, embed) {
   frame.style.border = '0';
   frame.style.borderRadius = '12px';
   bodyEl.appendChild(frame);
+    const open = panel.querySelector('.mini-player-open');
+  open.href = embed.replace('/embed/', '/').split('?')[0];
+  open.hidden = false;
 }
 
 function showForm(appKey) {
+    panel.querySelector('.mini-player-open').hidden = true;
   const app = APPS[appKey];
   const hasSaved = !!(load()[appKey] || {}).embed;
   bodyEl.innerHTML = `
@@ -74,6 +78,7 @@ function ensurePanel() {
   panel.innerHTML = `
     <div class="mini-player-head">
       <strong class="mini-player-title"></strong>
+            <a class="icon-btn icon-btn-sm mini-player-open" target="_blank" rel="noopener" aria-label="Apri in Spotify" hidden>↗</a>
       <button type="button" class="icon-btn icon-btn-sm" data-mp="change" aria-label="Cambia link">✎</button>
       <button type="button" class="icon-btn icon-btn-sm" data-mp="min" aria-label="Riduci">▾</button>
       <button type="button" class="icon-btn icon-btn-sm" data-mp="close" aria-label="Chiudi">✕</button>

@@ -1880,3 +1880,7 @@ a { color: inherit; text-decoration: none; }
 .mini-player-form { display: flex; flex-direction: column; gap: 8px; padding: 4px; }
 .mini-player-form p { margin: 0; font-size: 0.78rem; color: var(--text-secondary); }
 .mini-player-msg { color: var(--danger) !important; min-height: 1.1em; }
+
+.topbar-apps { justify-content: center; }
+.app-chip-logo { flex-shrink: 0; display: block; }
+.mini-player-open[hidden] { display: none; }
