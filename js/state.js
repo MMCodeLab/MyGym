@@ -424,7 +424,7 @@ const store = {
     Object.assign(state.activeWorkout, patch);
     save();
   },
-  addActiveWorkoutExercise({ exerciseId, name, muscles, kind }) {
+  addActiveWorkoutExercise({ exerciseId, name, muscles, kind, bodyMode }) {
     if (!state.activeWorkout) return null;
         const resolvedKind = resolveExerciseKind(kind, { name, muscleGroups: muscles });
     const lib = store.findExercise(exerciseId, name);

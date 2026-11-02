@@ -116,4 +116,12 @@ Per associare una foto a ogni esercizio sono state valutate tre opzioni:
 
 ---
 
+Limiti noti
+Con lo schermo bloccato, il timer mantiene il tempo giusto (si ricalcola dall'orologio) ma suoni e vibrazione potrebbero non partire, soprattutto su iPhone.
+La sincronizzazione risolve i conflitti tenendo l'ultima modifica: se cambi la stessa cosa su due dispositivi offline, vince quella caricata per ultima.
+I record e le medaglie dei vecchi allenamenti a corpo libero erano calcolati con la sola zavorra: dal momento dell'aggiornamento contano il carico reale, quindi un record può risultare "battuto" una volta.
+Il Virtual PT e il riconoscimento dei piatti sono stime: non sostituiscono un allenatore o un nutrizionista.
+
 Fa parte della famiglia di app **My**, insieme a MyVerse, MyMoney, MySchool e MySite.
+
+© Matteo Minniti. Tutti i diritti riservati.
