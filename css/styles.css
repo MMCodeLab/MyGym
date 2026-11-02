@@ -1890,3 +1890,91 @@ a { color: inherit; text-decoration: none; }
   border-color: rgba(139, 92, 246, 0.45);
   background: rgba(139, 92, 246, 0.12);
 }
+
+.topbar-apps { gap: 6px; flex-wrap: nowrap; }
+.app-chip { padding: 4px 10px; font-size: 0.78rem; gap: 6px; }
+
+.tool-out { margin-top: var(--space-3); }
+.interval-display {
+  text-align: center; margin-top: var(--space-3); padding: var(--space-4);
+  border-radius: var(--radius-lg); border: 1px solid var(--glass-border); background: var(--glass-bg);
+}
+
+/* ---------- Timer: finestra grande e pillola ---------- */
+.it-pill {
+  position: fixed; z-index: 44; left: 0; top: 0;
+  width: 164px; height: 44px; padding: 0 6px;
+  display: flex; align-items: center; gap: 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: var(--glass-shadow);
+  touch-action: none; user-select: none; cursor: grab;
+  transition: left .28s var(--ease-spring), top .28s var(--ease-spring), border-color .3s, background .3s;
+}
+.it-pill[hidden] { display: none; }
+.it-pill.is-dragging { transition: none; cursor: grabbing; }
+.it-pill-btn {
+  width: 32px; height: 32px; flex-shrink: 0; border: 0; border-radius: 50%;
+  background: var(--accent-gradient); color: #fff; font-size: 0.75rem; cursor: pointer;
+}
+.it-pill-x { background: transparent; color: var(--text-secondary); font-size: 0.9rem; }
+.it-pill-text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.1; }
+.it-pill-phase {
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.it-pill-time { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+.it-overlay {
+  position: fixed; inset: 0; z-index: 45;
+  display: flex; align-items: center; justify-content: center;
+  padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px));
+  background: var(--overlay-bg);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.it-overlay[hidden] { display: none; }
+.it-card {
+  width: min(100%, 520px); max-height: 100%; overflow-y: auto;
+  padding: var(--space-4); border-radius: var(--radius-lg);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+.it-head { display: flex; align-items: center; gap: 8px; }
+.it-head strong { flex: 1; font-family: var(--font-display); font-size: 1.1rem; }
+.it-display { text-align: center; padding: var(--space-3) 0 var(--space-2); }
+.it-phase { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary); }
+.it-time {
+  font-family: var(--font-display); font-weight: 800; line-height: 1.05;
+  font-size: clamp(4.4rem, 26vw, 8rem); font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.it-sub { min-height: 1.3em; font-size: 0.95rem; color: var(--text-secondary); }
+.it-bar {
+  height: 10px; margin-top: var(--space-3); overflow: hidden;
+  border-radius: var(--radius-pill); background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+}
+.it-bar-fill { display: block; height: 100%; width: 0; background: var(--accent-gradient); transition: width .2s linear; }
+.it-main { display: flex; gap: 10px; }
+.it-go { flex: 2; min-height: 68px; font-size: 1.35rem; }
+.it-side { flex: 1; min-height: 68px; font-size: 0.95rem; }
+.it-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.it-tools .btn { flex: 1 1 auto; }
+.it-group-title {
+  margin: 6px 0 6px 2px; font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-tertiary);
+}
+.it-chips { flex-wrap: wrap; overflow: visible; margin-bottom: var(--space-2); }
+
+/* Prima di partire si vedono i preimpostati; una volta partito, solo i comandi. */
+.it-card:not(.is-active) .it-adj,
+.it-card:not(.is-active) .it-act,
+.it-card.is-stopwatch .it-adj { display: none; }
+.it-card.is-active .it-setup { display: none; }
+.it-card.is-stopwatch .it-fields { display: none; }
+
+/* Colori per fase: sia nella finestra grande sia nella pillola */
+.it-pill[data-kind="work"], .it-card[data-kind="work"] { border-color: rgba(34, 197, 94, .65); background: rgba(34, 197, 94, .16); }
+.it-pill[data-kind="rest"], .it-card[data-kind="rest"] { border-color: rgba(6, 182, 212, .65); background: rgba(6, 182, 212, .16); }
+.it-pill[data-kind="prep"], .it-card[data-kind="prep"] { border-color: rgba(244, 183, 64, .65); background: rgba(244, 183, 64, .16); }
+.it-pill[data-kind="done"], .it-card[data-kind="done"] { border-color: rgba(139, 92, 246, .65); background: rgba(139, 92, 246, .18); }
